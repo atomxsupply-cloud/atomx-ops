@@ -1,0 +1,27 @@
+# Dependencies
+backend/node_modules/
+frontend/node_modules/
+
+# Environment and secrets
+backend/.env
+backend/.env.local
+frontend/.env
+frontend/.env.local
+
+# Local databases and runtime files
+backend/atomx.db
+backend/atomx.db-shm
+backend/atomx.db-wal
+backend/*.log
+
+# Builds
+frontend/dist/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Optional local exports
+backend/cerebro-bot/fichajes-contable/

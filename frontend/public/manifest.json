@@ -1,0 +1,10 @@
+{
+  "name": "ATOM X OPS",
+  "short_name": "AtomX",
+  "description": "Panel operativo interno ATOM X SUPPLY",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#1a2a6c",
+  "icons": []
+}
