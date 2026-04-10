@@ -370,6 +370,54 @@ input:disabled + .toggle-slider { opacity:0.5; cursor:not-allowed; }
 .results > *:nth-child(3) { animation-delay:0.12s; }
 .results > *:nth-child(4) { animation-delay:0.18s; }
 .results > *:nth-child(5) { animation-delay:0.24s; }
+
+/* COLOR MAP */
+.color-map-wrap {
+  position:relative; border-radius:14px; overflow:hidden;
+  margin-bottom:4px; background:#000;
+}
+.color-map-img { width:100%; display:block; border-radius:14px; opacity:0.82; }
+.color-map-overlay { position:absolute; inset:0; pointer-events:none; }
+.cm-dot {
+  position:absolute;
+  width:20px; height:20px; border-radius:50%;
+  border:2.5px solid rgba(255,255,255,0.9);
+  transform:translate(-50%,-50%);
+  box-shadow:0 2px 8px rgba(0,0,0,0.7);
+  transition:all 0.2s; cursor:pointer;
+  pointer-events:all;
+}
+.cm-dot.active { transform:translate(-50%,-50%) scale(1.6); z-index:10; }
+.cm-label {
+  position:absolute;
+  bottom:calc(100% + 6px); left:50%;
+  transform:translateX(-50%);
+  background:rgba(0,0,0,0.92); color:#fff;
+  font-size:9px; font-family:'Space Mono',monospace;
+  padding:4px 8px; border-radius:6px;
+  white-space:nowrap; pointer-events:none;
+  display:none; line-height:1.5;
+  border:1px solid rgba(255,255,255,0.15);
+}
+.cm-dot.active .cm-label { display:block; }
+
+/* TINTA OPTION (rediseno marca pequeña) */
+.opt-brand-tag {
+  font-size:8px; color:var(--muted);
+  font-family:'Space Mono',monospace;
+  background:rgba(255,255,255,0.05);
+  border:1px solid var(--border);
+  padding:2px 6px; border-radius:4px;
+  letter-spacing:1px; line-height:1;
+}
+.opt-ink-name {
+  font-size:15px; font-weight:700;
+  line-height:1.2; margin:6px 0 4px;
+  color:var(--text);
+}
+.opt-razon { font-size:10px; color:var(--muted); line-height:1.4; }
+.opt-meta  { font-size:9px;  color:var(--dim);  margin-top:3px; }
+.opt-price { font-size:12px; font-weight:700; margin-top:6px; }
 </style>
 </head>
 <body>
@@ -1098,12 +1146,10 @@ function buildUploadImage(canvas) {
 }
 
 function isSkinTone(h, s, l) {
-  // Filtra SOLO tonos de piel humana real del fondo/brazo:
-  // matiz muy cÃ¡lido (naranja-melocotÃ³n), saturaciÃ³n BAJA (piel natural no es muy saturada),
-  // luminosidad ALTA (la piel expuesta es clara en foto)
-  // Colores carne usados en tatuajes tienen mayor saturaciÃ³n o menor luminosidad
-  const warmHue = (h >= 10 && h <= 35);
-  return warmHue && s >= 8 && s <= 38 && l >= 55 && l <= 85;
+  // Solo filtra piel real del fondo/brazo. Rango reducido para no filtrar
+  // amarillos calidos (H>30) ni dorados que se usan en tatuajes.
+  const warmHue = (h >= 10 && h <= 28);
+  return warmHue && s >= 8 && s <= 36 && l >= 58 && l <= 85;
 }
 
 function hslToCategory(h, s, l) {
@@ -1168,11 +1214,14 @@ function getDominantColors(canvas, n) {
     const bs = satBucket;
     const bl = lightBucket;
     const key = `${bh},${bs},${bl}`;
-    if (!buckets[key]) buckets[key] = { count: 0, rSum: 0, gSum: 0, bSum: 0 };
+    if (!buckets[key]) buckets[key] = { count: 0, rSum: 0, gSum: 0, bSum: 0, xSum: 0, ySum: 0 };
     buckets[key].count++;
     buckets[key].rSum += r;
     buckets[key].gSum += g;
     buckets[key].bSum += b;
+    const pidx = Math.floor(i / 4);
+    buckets[key].xSum += pidx % w;
+    buckets[key].ySum += Math.floor(pidx / w);
   }
 
   const candidates = Object.entries(buckets)
@@ -1189,6 +1238,7 @@ function getDominantColors(canvas, n) {
         hex: rgbToHex(r, g, b),
         categoria: hslToCategory(hsl[0], hsl[1], hsl[2]),
         importancia: getColorImportance(hsl[0], hsl[1], hsl[2], val.count),
+        centroid: { x: val.xSum / val.count / w, y: val.ySum / val.count / h },
       };
     })
     .sort((a, b) => b.importancia - a.importancia)
@@ -1205,6 +1255,7 @@ function getDominantColors(canvas, n) {
         hex: candidate.hex,
         categoria: candidate.categoria,
         porcentaje: total ? Number(((candidate.count / total) * 100).toFixed(1)) : 0,
+        centroid: candidate.centroid,
       });
     }
     if (result.length >= n) break;
@@ -1337,11 +1388,22 @@ async function analyzeImage() {
     ? "solo colores muy saturados y oscuros; naranja/amarillo/blanco/pasteles NO funcionan"
     : "solo negro y colores muy saturados oscuros; amarillo/naranja/blanco/pasteles/colores claros INVIABLES";
 
-  const categorias = Object.keys(catalogo).join(', ');
-  const marcasDisponibles = [...new Set(flattenCatalog().map((item) => formatMarca(item.marca)))]
-    .filter(Boolean)
-    .join(', ');
   const modoMarca = brandInfo[selectedBrandMode]?.label || selectedBrandMode;
+
+  // Catalogo compacto con nombres reales de PrestaShop para que la IA no invente
+  const catalogoParaIA = (() => {
+    const bycat = {};
+    flattenCatalog().forEach(item => {
+      if (!item?.nombre) return;
+      const cat = item.categoria || 'color';
+      if (!bycat[cat]) bycat[cat] = [];
+      if (bycat[cat].length < 22) bycat[cat].push(item.nombre);
+    });
+    return Object.entries(bycat)
+      .map(([cat, names]) => `${cat.toUpperCase()}: ${names.join(' | ')}`)
+      .join('\n');
+  })();
+
   const colorList = extractedColors.map((c, i) => {
     const [hh, ss, ll] = c.hsl;
     return `${i+1}. ${c.hex} | H:${hh} S:${ss}% L:${ll}% | peso:${c.porcentaje}% | papel:${c.papel} | categoria:${c.categoria}`;
@@ -1352,54 +1414,59 @@ ESTILOS Y TINTAS TIPICAS:
 - Japones/Irezumi: negros densos, rojos intensos, verde jade, azul cobalto oscuro, naranja koi, amarillo dorado. Armonia analoga en degradados, complementaria en focos.
 - Traditional/Old School: negros, lineas gruesas, rojo/azul/verde/amarillo solidos sin gradiente. Max 5 colores.
 - Neo-Traditional: como traditional + mas gama, gradientes suaves, vibrantes.
-- Realismo/Retrato: escala de grises frios, negros, desaturados. Armonia monocromatica.
-- Blackwork/Dotwork: solo negros de maxima densidad.
+- Realismo/Retrato: busca detalles fotograficos, sombras sutiles y graduales, texturas de piel, ojos, pelo, plumas. Escala de grises frios, negros densos, desaturados. Si hay un retrato humano o animal con detalle fotografico es realismo aunque tenga algo de color. Armonia monocromatica o casi.
+- Bio-realismo: realismo con elementos naturales (flores, animales, insectos). Verdes, cafes terrosos, amarillos. Detalle fotografico.
+- Blackwork/Dotwork: solo negros de maxima densidad, no recomendar colores.
 - Watercolor: muy saturados sin linea negra, pasteles vivos. Armonia analoga siempre.
-- Chicano: solo grises y negros.
+- Chicano/Grey Wash: solo grises y negros, estilo urbano, imagenes culturales/religiosas.
 - Fine Line: negro suave para lineas finas, grises muy diluidos.
 - New School: colores cartoon muy saturados, complementarios para impacto.`;
 
-  const prompt = `Eres ATOMX, experto colorista en tintas de tatuaje (negra/blanca/color). Analiza la imagen.
+  const prompt = `Eres ATOMX, experto colorista en tintas de tatuaje. Analiza la imagen.
 
-PASO 1 - Detecta el ESTILO del tatuaje.
-PASO 2 - Analiza dominante/secundario, temperatura, saturacion y valor tonal de la imagen completa.
- PASO 3 - Recomienda tintas del catalogo por FUNCION (base, sombra, transicion, luz, linea), no solo por parecido RGB. Prioriza legibilidad en piel antes que copiar el color exacto. Usa como salida final entre 4 y 7 tintas clave. Si el diseno tiene muchos tonos, agrupalos en familias utiles para tatuaje sin perder la lectura real.
-PASO 4 - Antes de recomendar, usa TODA la paleta medida. No te quedes con 3 o 4 tonos si la imagen tiene mas color.
+PASO 1 - Detecta el ESTILO exacto del tatuaje (Realismo, Japones, Traditional, etc.).
+PASO 2 - Analiza dominante/secundario, temperatura, saturacion y valor tonal.
+PASO 3 - Recomienda tintas del catalogo por FUNCION (base, sombra, transicion, luz, linea). Prioriza legibilidad en piel. 4-7 tintas clave.
+PASO 4 - Usa TODA la paleta medida. No te quedes con pocos tonos si hay mas color real.
+PASO 5 - Para hex_objetivo usa el hex EXACTO de los COLORES MEDIDOS que mejor represente ese color. No inventes hexadecimales.
 
-COLORES MEDIDOS EN ALTA RESOLUCION (tono de piel de la persona ya filtrado; si el diseno usa color carne de forma real, incluyelo):
+COLORES MEDIDOS EN ALTA RESOLUCION (piel del brazo/fondo ya filtrada):
 ${colorList}
 
 PIEL: ${skin.nombre} (Fitzpatrick ${skin.fitzpatrick})
-VIABILIDAD: ${viabilidad}
+VIABILIDAD EN PIEL: ${viabilidad}
 
 ${estilosInfo}
 
 REGLAS COLORIMETRIA:
-- Rojos H:0-14 S>70: Crimson Red / Ruby Red / Vette Red
-- Rojos H:0-14 S 40-70 o L<35: Deep Red / Dark Red / Undead Red
-- Rojo-naranja H:15-30: Rusty Red / Burnt Orange
 - Melanina filtra calidos y claros en FT III+; negro y azul oscuro estables siempre
 - Blanco/amarillo inviables FT IV+; pastel desaparece en piel media/oscura
-- Evita exceso de tonos que compiten entre si
+- Evita tonos que compiten entre si en la misma zona
 
-CATALOGO:
-- CATEGORIAS: ${categorias}
-- MARCAS DISPONIBLES: ${marcasDisponibles}
+CATALOGO REAL DE TINTAS - USA SOLO ESTOS NOMBRES, NO INVENTES:
+${catalogoParaIA}
 
-MODO DE MARCA SELECCIONADO: ${selectedBrandMode} (${modoMarca})
+CARACTERISTICAS DE MARCA (aplica este conocimiento en la recomendacion):
+- ETERNAL: tintas densas y cubridoras, mayor opacidad, curan bien, paleta de color muy amplia
+- RADIANT: tintas liquidas, colores vivos y saturados, Super White y Nuclear White son los mejores blancos del mercado
+- DERMAGLO: tintas solidas y densas, perfectas para traditional y neo-traditional (10/10), paleta de color mas limitada
+- VICE COLORS / VICE: excelentes colores, muy usada por tatuadores contemporaneos, blancos competitivos
+- DYNAMIC: el negro de referencia absoluta (Dynamic Black, Triple Black), muy poca gente lo usa para color, es la vieja confiable para negros y blancos. NO recomendar para colores.
+- ALLEGORY / HYPE INK: negros premium de alta densidad para lineas y fondos
+- Nuclear White (Radiant): blanco muy muy denso, requiere tecnica especifica, no mezclar sin saber
+- Super White (Radiant): mejor blanco para la mayoria de estilos
+
+MODO DE MARCA: ${selectedBrandMode} (${modoMarca})
 REGLAS DE MARCA:
-- Si MODO=Mixto: puedes mezclar marcas. Blancos prioriza Radiant (Super/Nuclear White) > Dynamic > Eternal/Vice. Negros prioriza Dynamic/Allegory/Hype Ink/Vice. Colores prioriza Dermaglo/Vice Colors/Eternal/Radiant.
-- Si MODO!=Mixto: opcion1 SIEMPRE debe ser de esa marca. Si no existe un tono util en esa marca, escribe en "advertencia": "No existe en ${modoMarca}. Mirar otra marca." y en opcion2 pon la mejor alternativa de otra marca del catalogo.
+- Si MODO=Mixto: mezcla marcas segun el color. Blancos: Radiant (Super/Nuclear White) > Vice > Dynamic. Negros: Dynamic/Allegory/Hype Ink. Colores: Eternal/Dermaglo/Vice Colors/Radiant.
+- Si MODO!=Mixto: opcion1 SIEMPRE de esa marca. Si no existe ese tono, pon en "advertencia": "No existe en ${modoMarca}. Mirar otra marca." y en opcion2 pon la mejor alternativa del catalogo.
 
-Para cada color da EXACTAMENTE 2 tintas (opcion principal y alternativa mas contrastada que cure mejor).
-Formato de salida para cada tinta: ZONA / FUNCION / NOMBRE EXACTO DE TINTA / MOTIVO
-Respuesta breve. Razones tecnicas de maximo 18 palabras.
-No repitas explicaciones largas.
-No superes 7 elementos en "colores_detectados".
-No superes 7 elementos en "tintas_recomendadas".
+Da EXACTAMENTE 2 tintas por color con nombre EXACTO del catalogo.
+Razones tecnicas de maximo 15 palabras. Sin explicaciones largas.
+Max 7 colores_detectados. Max 7 tintas_recomendadas.
 
 Responde SOLO JSON sin texto extra ni backticks:
-{"estilo":"estilo detectado","descripcion_estilo":"tintas tipicas de este estilo en una frase","colores_detectados":[{"nombre":"nombre descriptivo","hex":"#xxx","porcentaje":30}],"tintas_recomendadas":[{"color_base":"nombre color","zona":"zona del diseno","funcion":"base|sombra|transicion|luz|linea","categoria":"negra|blanca|color","hex_objetivo":"#xxx","opcion1":{"tinta":"Marca Nombre Exacto","razon":"motivo tecnico"},"opcion2":{"tinta":"Marca Nombre Exacto","razon":"alternativa mas contrastada"},"advertencia":"aviso real o vacio"}],"consejo_piel":"consejo especifico para piel ${skin.nombre}"}`;
+{"estilo":"estilo detectado","descripcion_estilo":"tintas tipicas de este estilo en una frase","colores_detectados":[{"nombre":"nombre descriptivo","hex":"#xxx","porcentaje":30}],"tintas_recomendadas":[{"color_base":"nombre color","zona":"zona del diseno","funcion":"base|sombra|transicion|luz|linea","categoria":"negra|blanca|color","hex_objetivo":"#xxx de colores_medidos","opcion1":{"tinta":"Nombre Exacto Del Catalogo","razon":"motivo tecnico"},"opcion2":{"tinta":"Nombre Exacto Del Catalogo","razon":"alternativa"},"advertencia":"aviso o vacio"}],"consejo_piel":"consejo especifico para piel ${skin.nombre}"}`;
 
   try {
     const response = await fetch(getAnalyzeEndpoint(), {
@@ -1446,6 +1513,31 @@ Responde SOLO JSON sin texto extra ni backticks:
 }
 
 // â”€â”€ BUSCAR PRECIO EN CATÃLOGO LOCAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── HELPERS MARCA / NOMBRE ─────────────────────────────────────────────────
+const BRAND_PREFIXES = ['vice colors','vice','eternal','dynamic','radiant','dermaglo','allegory','hype ink'];
+
+function extractBrandTag(fullName) {
+  const n = String(fullName || '').toLowerCase().trim();
+  for (const p of BRAND_PREFIXES) {
+    if (n.startsWith(p + ' ') || n === p) return p.toUpperCase();
+  }
+  return '';
+}
+
+function stripBrandPrefix(fullName) {
+  const n = String(fullName || '').toLowerCase().trim();
+  for (const p of BRAND_PREFIXES) {
+    if (n.startsWith(p + ' ')) return (fullName || '').slice(p.length + 1).trim();
+  }
+  return fullName || '';
+}
+
+function toggleColorDot(el) {
+  const wasActive = el.classList.contains('active');
+  document.querySelectorAll('.cm-dot').forEach(d => d.classList.remove('active'));
+  if (!wasActive) el.classList.add('active');
+}
+
 function buscarPrecio(nombreTinta) {
   const found = selectedBrandMode === 'MIXTO'
     ? findCatalogItem(nombreTinta)
@@ -1491,24 +1583,28 @@ function resolveInkForUI(nombreTinta, categoriaEsperada = '') {
 // â”€â”€ RENDER RESULTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function renderResults(data) {
   const skin = skinInfo[selectedSkin];
+  const previewSrc = document.getElementById('preview-img').src;
   let html = '';
 
+  // Estilo
   if (data.estilo) {
     html += `
       <div class="skin-alert" style="border-color:rgba(255,77,0,0.3);background:rgba(255,77,0,0.08)">
-        <div class="skin-alert-icon">ART</div>
-        <div class="skin-alert-text"><strong>Estilo: ${data.estilo}</strong>${data.descripcion_estilo ? ' - ' + data.descripcion_estilo : ''}</div>
+        <div class="skin-alert-icon" style="font-size:11px;font-family:'Space Mono',monospace;color:var(--accent)">ART</div>
+        <div class="skin-alert-text"><strong>${data.estilo}</strong>${data.descripcion_estilo ? ' — ' + data.descripcion_estilo : ''}</div>
       </div>`;
   }
 
+  // Consejo piel
   if (data.consejo_piel) {
     html += `
       <div class="skin-alert">
-        <div class="skin-alert-icon">SKIN</div>
-        <div class="skin-alert-text"><strong>Piel ${skin.nombre}:</strong> ${data.consejo_piel}</div>
+        <div class="skin-alert-icon" style="font-size:11px;font-family:'Space Mono',monospace">PIEL</div>
+        <div class="skin-alert-text"><strong>${skin.nombre}:</strong> ${data.consejo_piel}</div>
       </div>`;
   }
 
+  // Colores detectados (swatches)
   if (data.colores_detectados && data.colores_detectados.length) {
     html += `<div class="section-title">Colores en el diseno</div>`;
     html += `<div class="colors-grid">`;
@@ -1526,8 +1622,29 @@ function renderResults(data) {
     html += `</div>`;
   }
 
+  // Mapa de colores interactivo
+  if (extractedColors.length && previewSrc && previewSrc !== 'data:,') {
+    const dots = extractedColors.slice(0, 10).map((c, i) => {
+      const cx = c.centroid ? (c.centroid.x * 100).toFixed(1) : (20 + i * 8).toFixed(1);
+      const cy = c.centroid ? (c.centroid.y * 100).toFixed(1) : (30 + (i % 3) * 20).toFixed(1);
+      return `<div class="cm-dot" style="left:${cx}%;top:${cy}%;background:${c.hex}"
+                   onclick="toggleColorDot(this)">
+                <div class="cm-label">${c.categoria}<br>${c.hex} · ${c.porcentaje}%</div>
+              </div>`;
+    }).join('');
+
+    html += `
+      <div class="section-title">Mapa de colores <span style="font-size:8px;color:var(--dim)">(toca un punto)</span></div>
+      <div class="color-map-wrap">
+        <img src="${previewSrc}" class="color-map-img" alt="">
+        <div class="color-map-overlay">${dots}</div>
+      </div>`;
+  }
+
+  // Tintas recomendadas
   html += `<div class="section-title">Tintas recomendadas</div>`;
   let totalMin = 0;
+
   (data.tintas_recomendadas || []).forEach(t => {
     const hasWarning = t.advertencia && t.advertencia.length > 3;
     const r1 = resolveInkForUI(t.opcion1?.tinta || '', t.categoria || '');
@@ -1536,13 +1653,17 @@ function renderResults(data) {
     const item2 = r2.item;
     const precio1 = item1?.precio || buscarPrecio(t.opcion1?.tinta || '');
     const precio2 = item2?.precio || buscarPrecio(t.opcion2?.tinta || '');
-    const stock1 = item1?.stock == null ? '' : ` | stock ${item1.stock}`;
-    const stock2 = item2?.stock == null ? '' : ` | stock ${item2.stock}`;
-    const meta1 = item1?.categoria ? `${formatMarca(item1?.marca)} · ${item1.categoria.toUpperCase()}${stock1}` : `${formatMarca(item1?.marca)}${stock1}`;
-    const meta2 = item2?.categoria ? `${formatMarca(item2?.marca)} · ${item2.categoria.toUpperCase()}${stock2}` : `${formatMarca(item2?.marca)}${stock2}`;
+    const stock1 = item1?.stock == null ? '' : `stock ${item1.stock}`;
+    const stock2 = item2?.stock == null ? '' : `stock ${item2.stock}`;
     const linkCompra = item1?.link || item2?.link || 'https://atomxsupply.com';
 
+    const brand1 = extractBrandTag(t.opcion1?.tinta || '');
+    const name1  = stripBrandPrefix(t.opcion1?.tinta || '') || t.opcion1?.tinta || '-';
+    const brand2 = extractBrandTag(t.opcion2?.tinta || '');
+    const name2  = stripBrandPrefix(t.opcion2?.tinta || '') || t.opcion2?.tinta || '-';
+
     totalMin += precio1;
+
     html += `
       <div class="tinta-card">
         <div class="tinta-header">
@@ -1550,47 +1671,51 @@ function renderResults(data) {
             <div class="tinta-color-dot" style="background:${t.hex_objetivo || '#888'}"></div>
             <div>
               <div class="tinta-nombre">${t.color_base}</div>
-              <div class="tinta-marca">${t.zona ? 'Zona ' + t.zona : ''}${t.funcion ? ' | <span style="color:#ffd600;font-size:10px">' + t.funcion.toUpperCase() + '</span>' : ''}</div>
+              <div class="tinta-marca">${t.zona ? t.zona : ''}${t.funcion ? ' &middot; <span style="color:#ffd600">' + t.funcion.toUpperCase() + '</span>' : ''}</div>
             </div>
           </div>
         </div>
-        ${hasWarning ? `<div style="font-size:11px;color:#ffd600;margin:4px 0 8px;line-height:1.4">Aviso: ${t.advertencia}</div>` : ''}
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+        ${hasWarning ? `<div style="font-size:10px;color:#ffd600;margin:2px 0 8px;line-height:1.4">&#9888; ${t.advertencia}</div>` : ''}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px">
           <div style="background:rgba(255,77,0,0.1);border:1px solid rgba(255,77,0,0.25);border-radius:10px;padding:10px">
-            <div style="font-size:9px;color:var(--accent);font-family:'Space Mono',monospace;letter-spacing:1px;margin-bottom:4px">OPCION 1</div>
-            <div style="font-size:13px;font-weight:700;line-height:1.3">${t.opcion1?.tinta || '-'}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:4px">${t.opcion1?.razon || ''}</div>
-            <div style="font-size:10px;color:var(--muted);margin-top:4px">${meta1}</div>
-            ${r1.note ? `<div style="font-size:10px;color:#ffd600;margin-top:6px;line-height:1.35">${r1.note}</div>` : ''}
-            <div style="font-size:14px;font-weight:700;color:var(--accent);margin-top:6px">${precio1.toFixed(2)}EUR</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <span style="font-size:8px;color:var(--accent);font-family:'Space Mono',monospace;letter-spacing:1px">OP.1</span>
+              ${brand1 ? `<span class="opt-brand-tag">${brand1}</span>` : ''}
+            </div>
+            <div class="opt-ink-name">${name1}</div>
+            <div class="opt-razon">${t.opcion1?.razon || ''}</div>
+            ${stock1 ? `<div class="opt-meta">${stock1}</div>` : ''}
+            ${r1.note ? `<div style="font-size:9px;color:#ffd600;margin-top:4px;line-height:1.3">${r1.note}</div>` : ''}
+            <div class="opt-price" style="color:var(--accent)">${precio1.toFixed(2)}€</div>
           </div>
           <div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;padding:10px">
-            <div style="font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:1px;margin-bottom:4px">OPCION 2</div>
-            <div style="font-size:13px;font-weight:700;line-height:1.3">${t.opcion2?.tinta || '-'}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:4px">${t.opcion2?.razon || ''}</div>
-            <div style="font-size:10px;color:var(--muted);margin-top:4px">${meta2}</div>
-            ${r2.note ? `<div style="font-size:10px;color:#ffd600;margin-top:6px;line-height:1.35">${r2.note}</div>` : ''}
-            <div style="font-size:14px;font-weight:700;color:var(--muted);margin-top:6px">${precio2.toFixed(2)}EUR</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <span style="font-size:8px;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:1px">OP.2</span>
+              ${brand2 ? `<span class="opt-brand-tag">${brand2}</span>` : ''}
+            </div>
+            <div class="opt-ink-name" style="color:var(--muted)">${name2}</div>
+            <div class="opt-razon">${t.opcion2?.razon || ''}</div>
+            ${stock2 ? `<div class="opt-meta">${stock2}</div>` : ''}
+            ${r2.note ? `<div style="font-size:9px;color:#ffd600;margin-top:4px;line-height:1.3">${r2.note}</div>` : ''}
+            <div class="opt-price" style="color:var(--dim)">${precio2.toFixed(2)}€</div>
           </div>
         </div>
         <button class="comprar-btn" onclick="window.open('${linkCompra}','_blank')">
-          VER EN ATOMXSUPPLY.COM ->
+          VER EN ATOMXSUPPLY.COM →
         </button>
       </div>`;
   });
 
+  // Total estimado ligero
   html += `
-    <div class="resumen-card">
-      <div class="resumen-title">RESUMEN DEL PEDIDO</div>
-      ${(data.tintas_recomendadas || []).map(t => `
-        <div class="resumen-row">
-          <span style="color:var(--muted)">${t.color_base}</span>
-          <span style="font-family:'Space Mono',monospace;font-size:12px;color:var(--muted)">Op.1: ${t.opcion1?.tinta || '-'}</span>
-        </div>`).join('')}
-      <div class="resumen-total">
-        <span>TOTAL ESTIMADO (op.1)</span>
-        <span>${totalMin.toFixed(2)}EUR</span>
+    <div style="display:flex;justify-content:space-between;align-items:center;
+                padding:12px 16px;margin-bottom:12px;
+                background:var(--accent-dim);border:1px solid var(--accent-soft);border-radius:12px">
+      <div>
+        <div style="font-family:'Space Mono',monospace;font-size:9px;color:var(--accent);letter-spacing:2px">ESTIMADO OP.1</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">${(data.tintas_recomendadas||[]).length} tintas · precios orientativos</div>
       </div>
+      <div style="font-size:24px;font-weight:700;color:var(--accent)">${totalMin.toFixed(2)}€</div>
     </div>`;
 
   html += `<button class="reset-btn" onclick="resetApp()">REINICIAR ANALISIS</button>`;
@@ -1601,6 +1726,7 @@ function renderResults(data) {
   document.getElementById('analyze-btn').style.display = 'none';
   resultsEl.scrollIntoView({ behavior:'smooth' });
 }
+
 function resetApp() {
   imageBase64 = null;
   document.getElementById('preview-img').style.display = 'none';
