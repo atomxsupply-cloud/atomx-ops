@@ -127,6 +127,18 @@ export default function Prestashop() {
   }, []);
 
   useEffect(() => {
+    const t = setInterval(async () => {
+      try {
+        const resp = await api.get('/prestashop/poll-nuevos');
+        if (resp.data?.nuevos > 0) {
+          await loadAll();
+        }
+      } catch {}
+    }, 2 * 60 * 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
     const value = search.trim();
     if (value.length < 2) {
       setSearchResults([]);

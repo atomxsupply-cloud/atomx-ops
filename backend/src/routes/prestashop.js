@@ -11,6 +11,7 @@ const {
   updateStockAvailable,
   syncPrestashopAnalytics,
 } = require('../services/prestashop');
+const { db, notify } = require('../db');
 
 const router = express.Router();
 
@@ -103,6 +104,57 @@ router.get('/stock/:productId', async (req, res) => {
     const item = await getStockByProductId(req.params.productId);
     if (!item) return res.status(404).json({ error: 'No he encontrado stock para ese producto' });
     res.json(item);
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.message, details: error.details || null });
+  }
+});
+
+router.get('/poll-nuevos', async (req, res) => {
+  try {
+    const orders = await getOrders({ limit: 30 });
+    if (!orders.length) return res.json({ nuevos: 0 });
+
+    const states = await getOrderStates();
+    const statesMap = Object.fromEntries(states.map((s) => [s.id, s.nombre]));
+    syncPrestashopAnalytics({ orders, statesMap });
+
+    const orderIds = orders.map((o) => Number(o.id));
+    const placeholders = orderIds.map(() => '?').join(',');
+    const pendingNotify = db.prepare(`
+      SELECT order_id, reference, total_paid
+      FROM prestashop_orders_cache
+      WHERE order_id IN (${placeholders}) AND notified_at IS NULL
+    `).all(...orderIds);
+
+    if (!pendingNotify.length) return res.json({ nuevos: 0 });
+
+    const hoy = new Date().toISOString().slice(0, 10);
+    const activeWorkers = db.prepare(`
+      SELECT f.user_id, u.nombre
+      FROM fichajes f
+      JOIN users u ON u.id = f.user_id
+      WHERE f.fecha = ? AND f.estado = 'trabajando' AND f.finished_at IS NULL
+    `).all(hoy);
+
+    const toNotify = activeWorkers.filter((w) => {
+      const n = String(w.nombre || '').toLowerCase();
+      return n.includes('juanje') || n.includes('papi') || n.includes('juanfran');
+    });
+
+    for (const order of pendingNotify) {
+      for (const worker of toNotify) {
+        notify(
+          worker.user_id,
+          'prestashop_nuevo',
+          'Pedido web nuevo',
+          `Pedido #${order.order_id}${order.reference ? ` (${order.reference})` : ''} · ${Number(order.total_paid || 0).toFixed(2)}€`,
+          '/prestashop'
+        );
+      }
+      db.prepare(`UPDATE prestashop_orders_cache SET notified_at = datetime('now','localtime') WHERE order_id = ?`).run(order.order_id);
+    }
+
+    res.json({ nuevos: pendingNotify.length, notificados: toNotify.length });
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message, details: error.details || null });
   }

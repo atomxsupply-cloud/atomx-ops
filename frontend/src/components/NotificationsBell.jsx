@@ -1,7 +1,24 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
+
+function playNotificationSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(520, ctx.currentTime + 0.25);
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.4);
+  } catch {}
+}
 
 function timeAgo(value) {
   if (!value) return '';
@@ -20,13 +37,19 @@ export default function NotificationsBell() {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
   const [unread, setUnread] = useState(0);
+  const prevUnread = useRef(-1);
   const navigate = useNavigate();
 
   async function load() {
     try {
       const r = await api.get('/notificaciones');
+      const newUnread = r.data.unread || 0;
+      if (prevUnread.current >= 0 && newUnread > prevUnread.current) {
+        playNotificationSound();
+      }
+      prevUnread.current = newUnread;
       setItems(r.data.items || []);
-      setUnread(r.data.unread || 0);
+      setUnread(newUnread);
     } catch {}
   }
 

@@ -377,6 +377,7 @@ function init() {
   try { db.exec(`ALTER TABLE salidas_dinero ADD COLUMN tienda TEXT NOT NULL DEFAULT 'murcia'`); } catch {}
   try { db.exec(`ALTER TABLE checklist_registros ADD COLUMN tienda TEXT NOT NULL DEFAULT 'murcia'`); } catch {}
   try { db.exec(`ALTER TABLE rutas_comerciales ADD COLUMN tienda TEXT NOT NULL DEFAULT 'murcia'`); } catch {}
+  try { db.exec(`ALTER TABLE prestashop_orders_cache ADD COLUMN notified_at TEXT`); } catch {}
 
   try {
     db.exec(`ALTER TABLE notas ADD COLUMN categoria TEXT DEFAULT 'general'`);
