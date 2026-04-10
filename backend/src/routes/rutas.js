@@ -9,6 +9,13 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function normalizeTurno(value) {
+  const text = String(value || '').trim().toLowerCase();
+  if (text === 'manana' || text === 'mañana') return 'manana';
+  if (text === 'tarde') return 'tarde';
+  return null;
+}
+
 function detectZona({ direccion = '', lat = null, lng = null }) {
   const text = String(direccion || '').toLowerCase();
 
@@ -42,7 +49,11 @@ router.get('/', auth, (req, res) => {
     LEFT JOIN users u ON r.asignado_a = u.id
     LEFT JOIN users c ON r.created_by = c.id
     WHERE r.fecha = ? AND r.tienda = ? AND r.estado = ?
-    ORDER BY COALESCE(r.hora, '99:99') ASC, r.created_at ASC
+    ORDER BY CASE COALESCE(r.hora, '')
+      WHEN 'manana' THEN 0
+      WHEN 'tarde' THEN 1
+      ELSE 9
+    END ASC, r.created_at ASC
   `).all(fecha, tienda, estado);
 
   res.json({ rutas });
@@ -74,7 +85,7 @@ router.post('/', auth, (req, res) => {
   const fecha = String(req.body?.fecha || today());
   const estudio = String(req.body?.estudio || '').trim();
   const direccion = String(req.body?.direccion || '').trim();
-  const hora = String(req.body?.hora || '').trim();
+  const hora = normalizeTurno(req.body?.turno || req.body?.hora);
   const nota = String(req.body?.nota || '').trim();
   const lat = req.body?.lat ?? null;
   const lng = req.body?.lng ?? null;
@@ -95,7 +106,7 @@ router.post('/', auth, (req, res) => {
     direccion || null,
     typeof lat === 'number' ? lat : null,
     typeof lng === 'number' ? lng : null,
-    hora || null,
+    hora,
     zona_detectada,
     nota || null,
     asignado_a,
@@ -118,7 +129,7 @@ router.put('/:id', auth, (req, res) => {
   const id = Number(req.params.id);
   const estudio = String(req.body?.estudio || '').trim();
   const direccion = String(req.body?.direccion || '').trim();
-  const hora = String(req.body?.hora || '').trim();
+  const hora = normalizeTurno(req.body?.turno || req.body?.hora);
   const nota = String(req.body?.nota || '').trim();
   const lat = req.body?.lat ?? null;
   const lng = req.body?.lng ?? null;
@@ -138,7 +149,7 @@ router.put('/:id', auth, (req, res) => {
     direccion || null,
     typeof lat === 'number' ? lat : null,
     typeof lng === 'number' ? lng : null,
-    hora || null,
+    hora,
     zona_detectada,
     nota || null,
     asignado_a,

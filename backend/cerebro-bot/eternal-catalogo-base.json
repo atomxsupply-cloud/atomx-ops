@@ -1,0 +1,812 @@
+{
+  "generated_at": "2026-04-04T19:32:26.698Z",
+  "source": "atomx-design-index",
+  "total": 148,
+  "categories": [
+    {
+      "categoria": "negros",
+      "items": [
+        {
+          "nombre": "Eternal Triple Black",
+          "precio": 19.51,
+          "uso": "Negro intenso líneas y relleno"
+        },
+        {
+          "nombre": "Eternal Perfect Black",
+          "precio": 19.51,
+          "uso": "Negro perfecto todo uso"
+        },
+        {
+          "nombre": "Eternal Maxx Black",
+          "precio": 19.51,
+          "uso": "Negro máxima densidad"
+        },
+        {
+          "nombre": "Eternal Lining Black",
+          "precio": 19.51,
+          "uso": "Específico para líneas finas"
+        },
+        {
+          "nombre": "Eternal Blackbird",
+          "precio": 19.51,
+          "uso": "Negro suave para sombreado"
+        }
+      ]
+    },
+    {
+      "categoria": "grises",
+      "items": [
+        {
+          "nombre": "Eternal Cool Light Gray",
+          "precio": 19.51,
+          "uso": "Gris frío claro sombras suaves"
+        },
+        {
+          "nombre": "Eternal Cool Medium Grey",
+          "precio": 19.51,
+          "uso": "Gris frío medio"
+        },
+        {
+          "nombre": "Eternal Cool Dark Grey",
+          "precio": 19.51,
+          "uso": "Gris frío oscuro"
+        },
+        {
+          "nombre": "Eternal Warm Light Grey",
+          "precio": 19.51,
+          "uso": "Gris cálido claro"
+        },
+        {
+          "nombre": "Eternal Warm Medium Gray",
+          "precio": 19.51,
+          "uso": "Gris cálido medio"
+        },
+        {
+          "nombre": "Eternal Warm Dark Gray",
+          "precio": 19.51,
+          "uso": "Gris cálido oscuro"
+        },
+        {
+          "nombre": "Eternal Gray",
+          "precio": 19.51,
+          "uso": "Gris estándar"
+        },
+        {
+          "nombre": "Eternal Smoke",
+          "precio": 20.81,
+          "uso": "Gris humo sombreado"
+        },
+        {
+          "nombre": "Eternal Bay Gray",
+          "precio": 19.51,
+          "uso": "Gris neutro versátil"
+        },
+        {
+          "nombre": "Eternal Exhaust",
+          "precio": 19.51,
+          "uso": "Gris violáceo oscuro"
+        },
+        {
+          "nombre": "Eternal Ink Neutral Gray Set",
+          "precio": 39,
+          "uso": "Set grises neutros"
+        }
+      ]
+    },
+    {
+      "categoria": "blancos",
+      "items": [
+        {
+          "nombre": "Eternal White",
+          "precio": 19.51,
+          "uso": "Blanco puro todo uso"
+        },
+        {
+          "nombre": "Eternal Perfect White",
+          "precio": 19.51,
+          "uso": "Blanco denso highlights"
+        },
+        {
+          "nombre": "Eternal Ivory",
+          "precio": 19.51,
+          "uso": "Blanco marfil suave"
+        },
+        {
+          "nombre": "Eternal White Knight",
+          "precio": 19.51,
+          "uso": "Blanco opaco correcciones"
+        },
+        {
+          "nombre": "Eternal Off White",
+          "precio": 20.81,
+          "uso": "Blanco roto para pieles"
+        },
+        {
+          "nombre": "Eternal Snowflake",
+          "precio": 20.81,
+          "uso": "Blanco azulado glacial"
+        },
+        {
+          "nombre": "Eternal Fair Maiden",
+          "precio": 19.51,
+          "uso": "Blanco rosado muy suave"
+        }
+      ]
+    },
+    {
+      "categoria": "rojos",
+      "items": [
+        {
+          "nombre": "Eternal Crimson Red",
+          "precio": 19.51,
+          "uso": "Rojo clásico brillante"
+        },
+        {
+          "nombre": "Eternal Ruby Red",
+          "precio": 19.51,
+          "uso": "Rojo rubí intenso"
+        },
+        {
+          "nombre": "Eternal Vette Red",
+          "precio": 19.51,
+          "uso": "Rojo vivo muy saturado"
+        },
+        {
+          "nombre": "Eternal Deep Red",
+          "precio": 19.51,
+          "uso": "Rojo oscuro profundo"
+        },
+        {
+          "nombre": "Eternal Dark Red",
+          "precio": 19.51,
+          "uso": "Rojo oscuro"
+        },
+        {
+          "nombre": "Eternal Light Red",
+          "precio": 19.51,
+          "uso": "Rojo claro"
+        },
+        {
+          "nombre": "Eternal Lipstick Red",
+          "precio": 19.51,
+          "uso": "Rojo vivo tipo labial"
+        },
+        {
+          "nombre": "Eternal Rusty Red",
+          "precio": 19.51,
+          "uso": "Rojo óxido envejecido"
+        },
+        {
+          "nombre": "Eternal Undead Red",
+          "precio": 19.51,
+          "uso": "Rojo sangre oscura"
+        },
+        {
+          "nombre": "Eternal Dried Blood",
+          "precio": 19.51,
+          "uso": "Rojo sangre seca muy oscuro"
+        },
+        {
+          "nombre": "Eternal Moulin Rouge",
+          "precio": 19.51,
+          "uso": "Rojo intenso dramático"
+        },
+        {
+          "nombre": "Eternal Wine Berry",
+          "precio": 19.51,
+          "uso": "Burdeos oscuro"
+        }
+      ]
+    },
+    {
+      "categoria": "rosas",
+      "items": [
+        {
+          "nombre": "Eternal Hot Pink",
+          "precio": 19.51,
+          "uso": "Rosa fucsia intenso"
+        },
+        {
+          "nombre": "Eternal Vivid Pink",
+          "precio": 19.51,
+          "uso": "Rosa vivo brillante"
+        },
+        {
+          "nombre": "Eternal Flamingo Pink",
+          "precio": 19.51,
+          "uso": "Rosa flamenco suave"
+        },
+        {
+          "nombre": "Eternal Pink",
+          "precio": 19.51,
+          "uso": "Rosa estándar"
+        },
+        {
+          "nombre": "Eternal Pepto Pink",
+          "precio": 19.51,
+          "uso": "Rosa chicle pastel"
+        },
+        {
+          "nombre": "Eternal Light Magenta",
+          "precio": 19.51,
+          "uso": "Magenta claro"
+        },
+        {
+          "nombre": "Eternal Magenta",
+          "precio": 19.51,
+          "uso": "Magenta puro"
+        },
+        {
+          "nombre": "Eternal Fuchsia",
+          "precio": 19.51,
+          "uso": "Fucsia brillante"
+        },
+        {
+          "nombre": "Eternal Antique Fuchsia",
+          "precio": 19.51,
+          "uso": "Fucsia antiguo apagado"
+        },
+        {
+          "nombre": "Eternal Mulberry",
+          "precio": 19.51,
+          "uso": "Mora oscura"
+        },
+        {
+          "nombre": "Eternal Wild Orchid",
+          "precio": 19.51,
+          "uso": "Orquídea viva"
+        },
+        {
+          "nombre": "Eternal Dusty Rose",
+          "precio": 19.51,
+          "uso": "Rosa envejecido apagado"
+        },
+        {
+          "nombre": "Eternal Rose Satin",
+          "precio": 19.51,
+          "uso": "Rosa satinado elegante"
+        },
+        {
+          "nombre": "Eternal Victorian Rose",
+          "precio": 19.51,
+          "uso": "Rosa victoriano vintage"
+        },
+        {
+          "nombre": "Eternal Plush Blush",
+          "precio": 19.51,
+          "uso": "Rosa empolvado suave"
+        },
+        {
+          "nombre": "Eternal Salmon",
+          "precio": 19.51,
+          "uso": "Salmón rosado natural"
+        },
+        {
+          "nombre": "Eternal Red Violet",
+          "precio": 19.51,
+          "uso": "Rojo violáceo"
+        },
+        {
+          "nombre": "Eternal Cotton Candy",
+          "precio": 19.51,
+          "uso": "Rosa algodón de azúcar"
+        }
+      ]
+    },
+    {
+      "categoria": "morados",
+      "items": [
+        {
+          "nombre": "Eternal Dark Purple",
+          "precio": 19.51,
+          "uso": "Morado oscuro intenso"
+        },
+        {
+          "nombre": "Eternal Imperial Violet",
+          "precio": 19.51,
+          "uso": "Violeta imperial medio"
+        },
+        {
+          "nombre": "Eternal Plum",
+          "precio": 19.51,
+          "uso": "Ciruela oscura"
+        },
+        {
+          "nombre": "Eternal Cuda Purple",
+          "precio": 19.51,
+          "uso": "Morado medio brillante"
+        },
+        {
+          "nombre": "Eternal Light Purple",
+          "precio": 19.51,
+          "uso": "Morado claro"
+        },
+        {
+          "nombre": "Eternal Lavender",
+          "precio": 19.51,
+          "uso": "Lavanda suave"
+        },
+        {
+          "nombre": "Eternal Enchanted Lilac",
+          "precio": 19.51,
+          "uso": "Lila pastel"
+        }
+      ]
+    },
+    {
+      "categoria": "naranjas",
+      "items": [
+        {
+          "nombre": "Eternal Orange",
+          "precio": 20.81,
+          "uso": "Naranja puro brillante"
+        },
+        {
+          "nombre": "Eternal Bright Orange",
+          "precio": 19.51,
+          "uso": "Naranja muy vivo"
+        },
+        {
+          "nombre": "Eternal Burnt Orange",
+          "precio": 20.81,
+          "uso": "Naranja tostado"
+        },
+        {
+          "nombre": "Eternal Rust",
+          "precio": 20.81,
+          "uso": "Naranja óxido oscuro"
+        },
+        {
+          "nombre": "Eternal Tangerine",
+          "precio": 19.51,
+          "uso": "Naranja mandarina suave"
+        },
+        {
+          "nombre": "Eternal Papaya",
+          "precio": 19.51,
+          "uso": "Salmón naranja vivo"
+        }
+      ]
+    },
+    {
+      "categoria": "amarillos",
+      "items": [
+        {
+          "nombre": "Eternal Bright Yellow",
+          "precio": 20.81,
+          "uso": "Amarillo puro brillante"
+        },
+        {
+          "nombre": "Eternal Lightning Yellow",
+          "precio": 20.81,
+          "uso": "Amarillo neón eléctrico"
+        },
+        {
+          "nombre": "Eternal Bumblebee",
+          "precio": 20.81,
+          "uso": "Amarillo abeja saturado"
+        },
+        {
+          "nombre": "Eternal Sunflower",
+          "precio": 20.81,
+          "uso": "Amarillo girasol cálido"
+        },
+        {
+          "nombre": "Eternal Golden Yellow",
+          "precio": 20.81,
+          "uso": "Amarillo dorado"
+        },
+        {
+          "nombre": "Eternal Harvest Gold",
+          "precio": 20.81,
+          "uso": "Dorado otoñal"
+        },
+        {
+          "nombre": "Eternal Old Gold",
+          "precio": 19.51,
+          "uso": "Dorado envejecido"
+        }
+      ]
+    },
+    {
+      "categoria": "verdes",
+      "items": [
+        {
+          "nombre": "Eternal Nuclear Green",
+          "precio": 20.81,
+          "uso": "Verde neón fluorescente"
+        },
+        {
+          "nombre": "Eternal Lime Green",
+          "precio": 20.81,
+          "uso": "Verde lima brillante"
+        },
+        {
+          "nombre": "Eternal Shamrock",
+          "precio": 20.81,
+          "uso": "Verde trébol puro"
+        },
+        {
+          "nombre": "Eternal Jade",
+          "precio": 20.81,
+          "uso": "Verde jade medio"
+        },
+        {
+          "nombre": "Eternal Jungle Green",
+          "precio": 20.81,
+          "uso": "Verde selva oscuro"
+        },
+        {
+          "nombre": "Eternal Green Concentrate",
+          "precio": 20.81,
+          "uso": "Verde puro muy saturado"
+        },
+        {
+          "nombre": "Eternal Grass Green",
+          "precio": 19.51,
+          "uso": "Verde hierba natural"
+        },
+        {
+          "nombre": "Eternal Avocado",
+          "precio": 20.81,
+          "uso": "Verde aguacate apagado"
+        },
+        {
+          "nombre": "Eternal Olive",
+          "precio": 20.81,
+          "uso": "Verde oliva oscuro"
+        },
+        {
+          "nombre": "Eternal Sage",
+          "precio": 20.81,
+          "uso": "Verde salvia suave"
+        },
+        {
+          "nombre": "Eternal Spearmint",
+          "precio": 20.81,
+          "uso": "Verde menta fresco"
+        },
+        {
+          "nombre": "Eternal Mint Green",
+          "precio": 19.51,
+          "uso": "Verde menta claro"
+        },
+        {
+          "nombre": "Eternal Aqua Marine",
+          "precio": 20.81,
+          "uso": "Verde agua turquesa"
+        },
+        {
+          "nombre": "Eternal Sea Foam",
+          "precio": 19.51,
+          "uso": "Verde espuma de mar"
+        },
+        {
+          "nombre": "Eternal Granny Smith Green",
+          "precio": 19.51,
+          "uso": "Verde manzana claro"
+        },
+        {
+          "nombre": "Eternal Roadrunner Green",
+          "precio": 20.81,
+          "uso": "Verde neón eléctrico"
+        },
+        {
+          "nombre": "Eternal Honey Dew",
+          "precio": 20.81,
+          "uso": "Verde claro pastel"
+        },
+        {
+          "nombre": "Eternal Graffiti Green",
+          "precio": 20.81,
+          "uso": "Verde urbano vibrante"
+        },
+        {
+          "nombre": "Eternal Coral Green",
+          "precio": 19.51,
+          "uso": "Verde coral suave"
+        },
+        {
+          "nombre": "Eternal Grape Leaf",
+          "precio": 19.51,
+          "uso": "Verde hoja oscuro"
+        },
+        {
+          "nombre": "Eternal Green Slime",
+          "precio": 20.81,
+          "uso": "Verde slime fluorescente"
+        }
+      ]
+    },
+    {
+      "categoria": "azules",
+      "items": [
+        {
+          "nombre": "Eternal True Blue",
+          "precio": 20.81,
+          "uso": "Azul puro estándar"
+        },
+        {
+          "nombre": "Eternal Dark Cobalt",
+          "precio": 20.81,
+          "uso": "Azul cobalto oscuro"
+        },
+        {
+          "nombre": "Eternal Galaxy Blue",
+          "precio": 20.81,
+          "uso": "Azul muy oscuro profundo"
+        },
+        {
+          "nombre": "Eternal Blue Concentrate",
+          "precio": 20.81,
+          "uso": "Azul saturado puro"
+        },
+        {
+          "nombre": "Eternal Peacock Blue",
+          "precio": 20.81,
+          "uso": "Azul pavo real medio"
+        },
+        {
+          "nombre": "Eternal Deep Sea",
+          "precio": 20.81,
+          "uso": "Azul mar profundo"
+        },
+        {
+          "nombre": "Eternal Sky Blue",
+          "precio": 20.81,
+          "uso": "Azul cielo brillante"
+        },
+        {
+          "nombre": "Eternal Baby Blue",
+          "precio": 20.81,
+          "uso": "Azul bebé suave"
+        },
+        {
+          "nombre": "Eternal Bermuda Blue",
+          "precio": 20.81,
+          "uso": "Azul caribe tropical"
+        },
+        {
+          "nombre": "Eternal Slate Blue",
+          "precio": 19.51,
+          "uso": "Azul pizarra apagado"
+        },
+        {
+          "nombre": "Eternal Dusty Blue",
+          "precio": 20.81,
+          "uso": "Azul polvoriento suave"
+        },
+        {
+          "nombre": "Eternal Periwinkle",
+          "precio": 20.81,
+          "uso": "Azul lavanda suave"
+        },
+        {
+          "nombre": "Eternal Robin Egg",
+          "precio": 20.81,
+          "uso": "Azul huevo petirrojo"
+        },
+        {
+          "nombre": "Eternal Turquoise",
+          "precio": 20.81,
+          "uso": "Turquesa brillante"
+        },
+        {
+          "nombre": "Eternal Tropical Teal",
+          "precio": 20.81,
+          "uso": "Verde azulado tropical"
+        },
+        {
+          "nombre": "Eternal GTO Teal",
+          "precio": 20.81,
+          "uso": "Verde azulado intenso"
+        },
+        {
+          "nombre": "Eternal Frostbite Blue",
+          "precio": 20.81,
+          "uso": "Azul hielo muy frío"
+        }
+      ]
+    },
+    {
+      "categoria": "pieles",
+      "items": [
+        {
+          "nombre": "Eternal Rich Medium Flesh",
+          "precio": 19.51,
+          "uso": "Piel media para retratos"
+        },
+        {
+          "nombre": "Eternal Rich Dark Flesh",
+          "precio": 19.51,
+          "uso": "Piel oscura para retratos"
+        },
+        {
+          "nombre": "Eternal Georgia Peach",
+          "precio": 20.81,
+          "uso": "Piel clara melocotón"
+        },
+        {
+          "nombre": "Eternal Light Peach",
+          "precio": 20.81,
+          "uso": "Piel muy clara"
+        },
+        {
+          "nombre": "Eternal Peachy Flesh",
+          "precio": 20.81,
+          "uso": "Piel rosácea natural"
+        },
+        {
+          "nombre": "Eternal Nude Blush",
+          "precio": 19.51,
+          "uso": "Piel nude rosada"
+        },
+        {
+          "nombre": "Eternal Sea Shell",
+          "precio": 19.51,
+          "uso": "Piel muy pálida"
+        },
+        {
+          "nombre": "Eternal Almond",
+          "precio": 20.81,
+          "uso": "Piel almendra media"
+        },
+        {
+          "nombre": "Eternal Spice",
+          "precio": 19.51,
+          "uso": "Piel especiada oscura"
+        },
+        {
+          "nombre": "Eternal Andrea Afferni Light Chestnut",
+          "precio": 19.51,
+          "uso": "Castaño claro retratos"
+        },
+        {
+          "nombre": "Eternal Bright Fawn",
+          "precio": 19.51,
+          "uso": "Beige claro natural"
+        },
+        {
+          "nombre": "Eternal Sandy Beige",
+          "precio": 19.51,
+          "uso": "Beige arena cálido"
+        }
+      ]
+    },
+    {
+      "categoria": "marrones",
+      "items": [
+        {
+          "nombre": "Eternal Dark Brown",
+          "precio": 19.51,
+          "uso": "Marrón oscuro estándar"
+        },
+        {
+          "nombre": "Eternal Hot Chocolate",
+          "precio": 19.51,
+          "uso": "Marrón chocolate cálido"
+        },
+        {
+          "nombre": "Eternal Mocha",
+          "precio": 20.81,
+          "uso": "Marrón moca suave"
+        },
+        {
+          "nombre": "Eternal Caramel",
+          "precio": 19.51,
+          "uso": "Marrón caramelo dorado"
+        },
+        {
+          "nombre": "Eternal Brown",
+          "precio": 19.51,
+          "uso": "Marrón básico natural"
+        },
+        {
+          "nombre": "Eternal Cocoa Bean",
+          "precio": 19.51,
+          "uso": "Marrón cacao oscuro"
+        },
+        {
+          "nombre": "Eternal Rich Espresso",
+          "precio": 20.81,
+          "uso": "Marrón expreso muy oscuro"
+        },
+        {
+          "nombre": "Eternal Sable",
+          "precio": 20.81,
+          "uso": "Marrón casi negro"
+        },
+        {
+          "nombre": "Eternal Ochre",
+          "precio": 20.81,
+          "uso": "Ocre amarillento"
+        },
+        {
+          "nombre": "Eternal Dark Ochre",
+          "precio": 20.81,
+          "uso": "Ocre oscuro tierroso"
+        },
+        {
+          "nombre": "Eternal Mudslide",
+          "precio": 19.51,
+          "uso": "Marrón barro grisáceo"
+        },
+        {
+          "nombre": "Eternal Longhorn Brown",
+          "precio": 20.81,
+          "uso": "Marrón cuero cálido"
+        },
+        {
+          "nombre": "Eternal Mudflap Brown",
+          "precio": 20.81,
+          "uso": "Marrón oscuro apagado"
+        },
+        {
+          "nombre": "Eternal Plague Brown",
+          "precio": 20.81,
+          "uso": "Marrón apagado oscuro"
+        },
+        {
+          "nombre": "Eternal Putrid Brown",
+          "precio": 19.51,
+          "uso": "Marrón desaturado sucio"
+        },
+        {
+          "nombre": "Eternal Whiskey Barrel",
+          "precio": 19.51,
+          "uso": "Marrón whiskey cálido"
+        }
+      ]
+    },
+    {
+      "categoria": "especiales",
+      "items": [
+        {
+          "nombre": "Eternal Bondo",
+          "precio": 19.51,
+          "uso": "Gris medio transiciones"
+        },
+        {
+          "nombre": "Eternal Cold Steel",
+          "precio": 19.51,
+          "uso": "Gris acero frío"
+        },
+        {
+          "nombre": "Eternal Rigor Mortis",
+          "precio": 19.51,
+          "uso": "Gris azulado cadavérico"
+        },
+        {
+          "nombre": "Eternal Freshly Dead",
+          "precio": 19.51,
+          "uso": "Verde grisáceo zombi fresco"
+        },
+        {
+          "nombre": "Eternal Gangrene",
+          "precio": 19.51,
+          "uso": "Verde oscuro gangrenoso"
+        },
+        {
+          "nombre": "Eternal Graveside Dark",
+          "precio": 20.81,
+          "uso": "Morado grisáceo oscuro"
+        },
+        {
+          "nombre": "Eternal Graveside Light",
+          "precio": 19.51,
+          "uso": "Lila grisáceo claro"
+        },
+        {
+          "nombre": "Eternal Infected Skin",
+          "precio": 19.51,
+          "uso": "Verde marrón enfermizo"
+        },
+        {
+          "nombre": "Eternal Decomposed Skin",
+          "precio": 19.51,
+          "uso": "Marrón verdoso zombie"
+        }
+      ]
+    }
+  ]
+}

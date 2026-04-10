@@ -1,10 +1,15 @@
 import { NavLink } from 'react-router-dom';
-import { Archive, CheckSquare, DollarSign, LayoutDashboard, Package, Route, StickyNote, Store, TimerReset, WalletCards, Zap } from 'lucide-react';
+import { Archive, BriefcaseBusiness, CheckSquare, Cloud, DollarSign, LayoutDashboard, Package, Palette, Route, Search, StickyNote, Store, TimerReset, Users, WalletCards } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { canAccessSection } from '../utils/permissions';
 
 const items = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true, section: 'dashboard' },
+  { to: '/direccion', label: 'Direccion', icon: BriefcaseBusiness, section: 'direccion' },
+  { to: '/buscador', label: 'Buscador', icon: Search, section: 'buscador' },
+  { to: '/design-ia', label: 'Design IA', icon: Palette, section: 'designia' },
+  { to: '/clientes', label: 'Clientes', icon: Users, section: 'clientes' },
+  { to: '/factusol', label: 'Factusol', icon: Cloud, section: 'factusol' },
   { to: '/pedidos', label: 'Pedidos', icon: Package, section: 'pedidos' },
   { to: '/tareas', label: 'Tareas', icon: CheckSquare, section: 'tareas' },
   { to: '/rutas', label: 'Rutas', icon: Route, section: 'rutas' },
@@ -14,7 +19,6 @@ const items = [
   { to: '/caja', label: 'Caja', icon: DollarSign, section: 'caja' },
   { to: '/salidas', label: 'Salidas', icon: WalletCards, section: 'salidas' },
   { to: '/fichajes', label: 'Fichajes', icon: TimerReset, section: 'fichajes' },
-  { to: '/asistente', label: 'IA', icon: Zap, section: 'ia' },
 ];
 
 export default function TopNavTabs() {

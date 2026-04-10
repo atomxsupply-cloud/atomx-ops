@@ -4,6 +4,33 @@ const { auth } = require('../middleware/auth');
 const { getTienda } = require('../services/tiendaScope');
 
 const router = express.Router();
+const APERTURA_FIJA = 100;
+
+function normalizeName(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+}
+
+function isCajaMorningPair(user) {
+  const key = normalizeName(user?.nombre || user?.email || '');
+  return key.includes('juanje') || key.includes('papi');
+}
+
+function resolveMorningLock(caja, reqUser) {
+  if (!caja || caja.manana_cierre != null) return { locked: false, ownerId: null, ownerName: '' };
+
+  const owner = db.prepare('SELECT id, nombre FROM users WHERE id = ?').get(caja.created_by);
+  if (!owner || owner.id === reqUser?.id) return { locked: false, ownerId: owner?.id || null, ownerName: owner?.nombre || '' };
+
+  if (isCajaMorningPair(owner) && isCajaMorningPair(reqUser)) {
+    return { locked: true, ownerId: owner.id, ownerName: owner.nombre };
+  }
+
+  return { locked: false, ownerId: owner.id, ownerName: owner.nombre };
+}
 
 function getHoy() {
   return new Date().toISOString().split('T')[0];
@@ -36,8 +63,11 @@ router.get('/hoy', auth, (req, res) => {
   const gastosManana = movimientosManana.filter((m) => m.tipo === 'gasto').reduce((s, m) => s + m.importe, 0);
   const ingresosTarde = movimientosTarde.filter((m) => m.tipo === 'ingreso').reduce((s, m) => s + m.importe, 0);
   const gastosTarde = movimientosTarde.filter((m) => m.tipo === 'gasto').reduce((s, m) => s + m.importe, 0);
-  const mananaEsperado = (caja.manana_apertura ?? caja.apertura_importe) + ingresosManana - gastosManana;
-  const tardeAperturaCalculada = Number(caja.manana_cierre ?? mananaEsperado) - Number(caja.factusol_ajuste_tarde || 0);
+  const mananaGenerado = Number(caja.manana_cierre || 0);
+  const tardeGenerado = Number(caja.tarde_cierre || 0);
+  const ajusteFactusol = Number(caja.factusol_ajuste_tarde || 0);
+  const descuadreTarde = Number((tardeGenerado - ajusteFactusol).toFixed(2));
+  const bloqueoManana = resolveMorningLock(caja, req.user);
 
   res.json({
     ...caja,
@@ -45,20 +75,27 @@ router.get('/hoy', auth, (req, res) => {
     ingresos,
     gastos,
     saldo_real,
+    apertura_fija: APERTURA_FIJA,
+    bloqueos: {
+      manana: bloqueoManana,
+    },
     resumen_turnos: {
       manana: {
-        apertura: caja.manana_apertura ?? caja.apertura_importe,
+        apertura: APERTURA_FIJA,
         cierre: caja.manana_cierre,
         ingresos: ingresosManana,
         gastos: gastosManana,
-        esperado: mananaEsperado,
+        esperado: APERTURA_FIJA + ingresosManana - gastosManana,
+        generado: mananaGenerado,
       },
       tarde: {
-        apertura: caja.tarde_apertura ?? tardeAperturaCalculada,
+        apertura: APERTURA_FIJA,
         cierre: caja.tarde_cierre,
         ingresos: ingresosTarde,
         gastos: gastosTarde,
-        ajuste_factusol: caja.factusol_ajuste_tarde || 0,
+        ajuste_factusol: ajusteFactusol,
+        generado: tardeGenerado,
+        descuadre: descuadreTarde,
       },
     },
   });
@@ -70,14 +107,14 @@ router.post('/abrir', auth, (req, res) => {
   const existe = db.prepare('SELECT id FROM caja_dias WHERE fecha = ? AND tienda = ?').get(hoy, tienda);
   if (existe) return res.status(400).json({ error: 'La caja de hoy ya esta abierta' });
 
-  const { apertura_importe } = req.body;
   let r;
   try {
-    r = db.prepare(`INSERT INTO caja_dias (fecha, tienda, apertura_importe, manana_apertura, created_by) VALUES (?, ?, ?, ?, ?)`).run(
+    r = db.prepare(`INSERT INTO caja_dias (fecha, tienda, apertura_importe, manana_apertura, tarde_apertura, created_by) VALUES (?, ?, ?, ?, ?, ?)`).run(
       hoy,
       tienda,
-      apertura_importe || 0,
-      apertura_importe || 0,
+      APERTURA_FIJA,
+      APERTURA_FIJA,
+      APERTURA_FIJA,
       req.user.id
     );
   } catch (error) {
@@ -87,7 +124,7 @@ router.post('/abrir', auth, (req, res) => {
     throw error;
   }
 
-  log('caja', r.lastInsertRowid, 'abrir', req.user.id, { apertura_importe, tienda });
+  log('caja', r.lastInsertRowid, 'abrir', req.user.id, { apertura_importe: APERTURA_FIJA, tienda });
   res.status(201).json(db.prepare('SELECT * FROM caja_dias WHERE id = ? AND tienda = ?').get(r.lastInsertRowid, tienda));
 });
 
@@ -97,35 +134,37 @@ router.post('/turno', auth, (req, res) => {
   const caja = db.prepare(`SELECT * FROM caja_dias WHERE fecha = ? AND tienda = ?`).get(hoy, tienda);
   if (!caja) return res.status(404).json({ error: 'No hay caja abierta hoy' });
 
-  const { turno, apertura, cierre, ajuste_factusol } = req.body;
+  const { turno, cierre, ajuste_factusol } = req.body;
+
   if (turno === 'manana') {
-    const aperturaManana = apertura == null ? (caja.manana_apertura ?? caja.apertura_importe ?? 100) : toNumber(apertura, caja.manana_apertura ?? caja.apertura_importe ?? 100);
+    const bloqueoManana = resolveMorningLock(caja, req.user);
+    if (bloqueoManana.locked) {
+      return res.status(403).json({
+        error: `La caja de manana la esta llevando ${bloqueoManana.ownerName}.`,
+      });
+    }
     const cierreManana = cierre == null ? null : toNumber(cierre, null);
     db.prepare(`
       UPDATE caja_dias
       SET manana_apertura = ?,
           manana_cierre = ?
       WHERE id = ?
-    `).run(aperturaManana, cierreManana, caja.id);
+    `).run(APERTURA_FIJA, cierreManana, caja.id);
   }
 
   if (turno === 'tarde') {
-    const ajusteFactusol = toNumber(ajuste_factusol, caja.factusol_ajuste_tarde || 0);
-    const baseManana = cierre == null ? (caja.manana_cierre ?? caja.manana_apertura ?? caja.apertura_importe ?? 100) : (caja.manana_cierre ?? caja.manana_apertura ?? caja.apertura_importe ?? 100);
-    const aperturaTardeCalculada = apertura == null
-      ? baseManana - ajusteFactusol
-      : toNumber(apertura, baseManana - ajusteFactusol);
     const cierreTarde = cierre == null ? null : toNumber(cierre, null);
+    const ajusteFactusol = toNumber(ajuste_factusol, caja.factusol_ajuste_tarde || 0);
     db.prepare(`
       UPDATE caja_dias
       SET factusol_ajuste_tarde = ?,
           tarde_apertura = ?,
           tarde_cierre = ?
       WHERE id = ?
-    `).run(ajusteFactusol, aperturaTardeCalculada, cierreTarde, caja.id);
+    `).run(ajusteFactusol, APERTURA_FIJA, cierreTarde, caja.id);
   }
 
-  log('caja', caja.id, 'turno', req.user.id, { turno, apertura, cierre, ajuste_factusol, tienda });
+  log('caja', caja.id, 'turno', req.user.id, { turno, cierre, ajuste_factusol, tienda });
   res.json(db.prepare(`SELECT * FROM caja_dias WHERE id = ?`).get(caja.id));
 });
 
@@ -190,9 +229,9 @@ router.post('/reset', auth, (req, res) => {
     db.prepare(`DELETE FROM caja_movimientos WHERE caja_id = ?`).run(caja.id);
     db.prepare(`
       UPDATE caja_dias
-      SET manana_apertura = apertura_importe,
+      SET manana_apertura = ?,
           manana_cierre = NULL,
-          tarde_apertura = NULL,
+          tarde_apertura = ?,
           tarde_cierre = NULL,
           factusol_ajuste_tarde = 0,
           cierre_importe = NULL,
@@ -202,7 +241,7 @@ router.post('/reset', auth, (req, res) => {
           estado = 'abierta',
           closed_by = NULL
       WHERE id = ?
-    `).run(caja.id);
+    `).run(APERTURA_FIJA, APERTURA_FIJA, caja.id);
     db.exec('COMMIT');
   } catch (error) {
     db.exec('ROLLBACK');

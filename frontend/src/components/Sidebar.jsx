@@ -5,14 +5,20 @@ import api from '../api/client';
 import { canAccessSection } from '../utils/permissions';
 import {
   LayoutDashboard, Package, CheckSquare,
-  Archive, DollarSign, LogOut, X, Zap, Circle, WalletCards, Route, TimerReset, CheckCircle2, Coffee, Store
+  Archive, DollarSign, LogOut, X, Circle, WalletCards, Route, TimerReset, CheckCircle2, Coffee, Store, StickyNote, Zap, BriefcaseBusiness, Users, Cloud, Search, Palette
 } from 'lucide-react';
 
 const nav = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard', end: true, section: 'dashboard' },
+  { to: '/direccion', icon: BriefcaseBusiness, label: 'Direccion', section: 'direccion' },
+  { to: '/buscador', icon: Search, label: 'Buscador', section: 'buscador' },
+  { to: '/design-ia', icon: Palette, label: 'Design IA', section: 'designia' },
+  { to: '/clientes', icon: Users, label: 'Clientes', section: 'clientes' },
+  { to: '/factusol', icon: Cloud, label: 'Factusol', section: 'factusol' },
   { to: '/pedidos', icon: Package, label: 'Pedidos', section: 'pedidos' },
   { to: '/tareas', icon: CheckSquare, label: 'Tareas', section: 'tareas' },
   { to: '/rutas', icon: Route, label: 'Rutas', section: 'rutas' },
+  { to: '/notas', icon: StickyNote, label: 'Notas', section: 'notas' },
   { to: '/stock', icon: Archive, label: 'Stock', section: 'stock' },
   { to: '/prestashop', icon: Store, label: 'PrestaShop', section: 'prestashop' },
   { to: '/caja', icon: DollarSign, label: 'Caja', section: 'caja' },

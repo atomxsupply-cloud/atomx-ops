@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Search, Sparkles } from 'lucide-react';
 import api from '../api/client';
 
@@ -9,7 +10,8 @@ function formatMoney(value) {
 }
 
 export default function Stock() {
-  const [webSearch, setWebSearch] = useState('');
+  const [searchParams] = useSearchParams();
+  const [webSearch, setWebSearch] = useState(searchParams.get('search') || '');
   const [webLoading, setWebLoading] = useState(false);
   const [webResults, setWebResults] = useState([]);
 

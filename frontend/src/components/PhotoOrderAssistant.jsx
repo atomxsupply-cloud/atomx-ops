@@ -79,8 +79,8 @@ export default function PhotoOrderAssistant({ onResultado }) {
         </div>
 
         <label className="mt-4 inline-flex items-center gap-2 rounded-xl bg-slate-900 text-white px-4 py-2 text-sm font-medium cursor-pointer hover:bg-slate-800">
-          <Camera size={15} /> Subir foto
-          <input type="file" accept="image/*" className="hidden" onChange={handleFile} />
+          <Camera size={15} /> Hacer foto
+          <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFile} />
         </label>
       </div>
 

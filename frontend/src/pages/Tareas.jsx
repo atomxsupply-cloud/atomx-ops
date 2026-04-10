@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Circle, Flag, Orbit, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import api from '../api/client';
 import Modal from '../components/Modal';
+import ChipSelect from '../components/ui/ChipSelect';
+import { useAuth } from '../context/AuthContext';
 
 const PRIORIDAD_STYLES = {
   alta: 'bg-red-50 text-red-700 border-red-200',
@@ -19,12 +22,16 @@ const CATEGORIAS = [
 ];
 
 const ATOM_COLORS = {
+  juanfran: 'from-emerald-500 to-lime-400',
   juanje: 'from-sky-500 to-cyan-400',
   papi: 'from-orange-500 to-amber-400',
-  juanfran: 'from-emerald-500 to-lime-400',
   lida: 'from-fuchsia-500 to-pink-400',
+  maria: 'from-rose-500 to-pink-400',
+  andrea: 'from-violet-500 to-purple-400',
   default: 'from-slate-500 to-slate-400',
 };
+
+const PERSON_ORDER = ['juanfran', 'juanje', 'papi', 'lida', 'maria', 'andrea'];
 
 const FORM_DEFAULT = {
   titulo: '',
@@ -135,6 +142,9 @@ function TareaCard({ tarea, onToggle, onDelete, onPromote }) {
 }
 
 export default function Tareas() {
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const querySearch = searchParams.get('search') || '';
   const [tareas, setTareas] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -143,14 +153,35 @@ export default function Tareas() {
   const [saving, setSaving] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [estadoVista, setEstadoVista] = useState('pendiente');
+  const [search, setSearch] = useState(querySearch);
+  const isJuanfran = normalizeName(user?.nombre) === 'juanfran';
+  const queryVista = searchParams.get('vista');
+  const queryEstado = searchParams.get('estado');
 
   useEffect(() => {
     api.get('/auth/users').then((r) => {
-      const ordered = [...r.data].sort((a, b) => a.nombre.localeCompare(b.nombre));
+      const ordered = [...r.data].sort((a, b) => {
+        const aIndex = PERSON_ORDER.indexOf(normalizeName(a.nombre));
+        const bIndex = PERSON_ORDER.indexOf(normalizeName(b.nombre));
+        const safeA = aIndex === -1 ? 999 : aIndex;
+        const safeB = bIndex === -1 ? 999 : bIndex;
+        if (safeA !== safeB) return safeA - safeB;
+        return a.nombre.localeCompare(b.nombre);
+      });
       setUsers(ordered);
-      if (!selectedUserId && ordered[0]?.id) setSelectedUserId(ordered[0].id);
+      if (!selectedUserId) {
+        if (isJuanfran && queryVista === 'equipo') setSelectedUserId('all');
+        else if (ordered[0]?.id) setSelectedUserId(ordered[0].id);
+      }
     });
-  }, []);
+  }, [isJuanfran, queryVista, selectedUserId]);
+
+  useEffect(() => {
+    if (queryEstado === 'atrasadas') setEstadoVista('atrasadas');
+    else if (queryEstado === 'completada') setEstadoVista('completada');
+    else if (queryEstado === 'todas') setEstadoVista('todas');
+    else setEstadoVista('pendiente');
+  }, [queryEstado]);
 
   async function load() {
     setLoading(true);
@@ -204,9 +235,39 @@ export default function Tareas() {
     });
   }, [users, tareas]);
 
-  const selectedUser = usersWithCounts.find((u) => u.id === selectedUserId) || usersWithCounts[0];
+  const allPendingCount = useMemo(
+    () => tareas.filter((t) => t.estado !== 'completada').length,
+    [tareas]
+  );
+
+  const selectedUser = selectedUserId === 'all'
+    ? { id: 'all', nombre: 'Equipo ATOM', pendingCount: allPendingCount, allTasks: tareas }
+    : usersWithCounts.find((u) => u.id === selectedUserId) || usersWithCounts[0];
+
   const assistantDetectedTasks = (selectedUser?.allTasks || []).filter((t) => t.origen === 'asistente' && t.estado !== 'completada');
-  const selectedTasks = (selectedUser?.allTasks || []).filter((t) => t.origen !== 'asistente' && (estadoVista === 'todas' ? true : t.estado === estadoVista));
+  const selectedTasks = (selectedUser?.allTasks || []).filter((t) => {
+    const matchesSearch = !search.trim() || [t.titulo, t.descripcion, t.categoria, t.creador_nombre]
+      .filter(Boolean)
+      .some((value) => normalizeName(value).includes(normalizeName(search)));
+    if (!matchesSearch) return false;
+    if (t.origen === 'asistente') return false;
+    if (estadoVista === 'todas') return true;
+    if (estadoVista === 'atrasadas') {
+      const hoy = new Date().toISOString().split('T')[0];
+      return t.estado !== 'completada' && t.fecha_limite && t.fecha_limite < hoy;
+    }
+    return t.estado === estadoVista;
+  });
+
+  const groupedTeamTasks = useMemo(() => {
+    if (selectedUser?.id !== 'all') return [];
+    return usersWithCounts
+      .map((person) => ({
+        ...person,
+        tasks: selectedTasks.filter((task) => task.asignado_a === person.id),
+      }))
+      .filter((person) => person.tasks.length > 0);
+  }, [selectedTasks, selectedUser, usersWithCounts]);
 
   const categoriasResumen = CATEGORIAS.map((cat) => ({
     ...cat,
@@ -230,6 +291,15 @@ export default function Tareas() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        {isJuanfran ? (
+          <AtomAvatar
+            key="all"
+            name="Equipo ATOM"
+            count={allPendingCount}
+            active={selectedUser?.id === 'all'}
+            onClick={() => setSelectedUserId('all')}
+          />
+        ) : null}
         {usersWithCounts.map((user) => (
           <AtomAvatar
             key={user.id}
@@ -249,10 +319,18 @@ export default function Tareas() {
               {selectedUser ? `${selectedUser.pendingCount} pendientes activas` : 'Selecciona un atomo'}
             </p>
 
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="input mt-4"
+              placeholder="Buscar tarea concreta..."
+            />
+
             <div className="flex flex-wrap gap-2 mt-4">
               {[
                 ['pendiente', 'Pendientes'],
                 ['completada', 'Completadas'],
+                ['atrasadas', 'Atrasadas'],
                 ['todas', 'Todas'],
               ].map(([value, label]) => (
                 <button
@@ -322,6 +400,31 @@ export default function Tareas() {
               <Orbit size={36} className="mx-auto text-slate-300 mb-3" />
               <p className="text-slate-500">No hay tareas para esta persona en la vista actual.</p>
             </div>
+          ) : selectedUser?.id === 'all' ? (
+            <section className="space-y-4">
+              {groupedTeamTasks.map((person) => (
+                <div key={person.id} className="card">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800">{person.nombre}</p>
+                      <p className="text-xs text-slate-500">{person.tasks.length} tarea{person.tasks.length > 1 ? 's' : ''} en esta vista</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedUserId(person.id)}
+                      className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                    >
+                      Ver detalle
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    {person.tasks.map((tarea) => (
+                      <TareaCard key={tarea.id} tarea={tarea} onToggle={toggleTarea} onDelete={deleteTarea} onPromote={promoteTarea} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </section>
           ) : (
             <>
               {altas.length > 0 && (
@@ -363,26 +466,34 @@ export default function Tareas() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="label">Asignar a</label>
-                <select value={form.asignado_a} onChange={(e) => setForm((f) => ({ ...f, asignado_a: e.target.value }))} className="input">
-                  <option value="">Sin asignar</option>
-                  {users.map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}
-                </select>
+                <ChipSelect
+                  value={form.asignado_a}
+                  onChange={(v) => setForm((f) => ({ ...f, asignado_a: v }))}
+                  allowEmpty
+                  options={users.map((u) => ({ value: u.id, label: u.nombre }))}
+                />
               </div>
               <div>
                 <label className="label">Categoria</label>
-                <select value={form.categoria} onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value }))} className="input">
-                  {CATEGORIAS.map((cat) => <option key={cat.value} value={cat.value}>{cat.label}</option>)}
-                </select>
+                <ChipSelect
+                  value={form.categoria}
+                  onChange={(v) => setForm((f) => ({ ...f, categoria: v }))}
+                  options={CATEGORIAS}
+                />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="label">Prioridad</label>
-                <select value={form.prioridad} onChange={(e) => setForm((f) => ({ ...f, prioridad: e.target.value }))} className="input">
-                  <option value="alta">Alta</option>
-                  <option value="normal">Normal</option>
-                  <option value="baja">Baja</option>
-                </select>
+                <ChipSelect
+                  value={form.prioridad}
+                  onChange={(v) => setForm((f) => ({ ...f, prioridad: v }))}
+                  options={[
+                    { value: 'alta', label: 'Alta' },
+                    { value: 'normal', label: 'Normal' },
+                    { value: 'baja', label: 'Baja' },
+                  ]}
+                />
               </div>
               <div>
                 <label className="label">Fecha limite</label>

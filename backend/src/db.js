@@ -43,6 +43,25 @@ function init() {
       updated_at TEXT DEFAULT (datetime('now','localtime'))
     );
 
+    CREATE TABLE IF NOT EXISTS clientes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      codigo_externo TEXT,
+      nombre TEXT NOT NULL,
+      direccion TEXT,
+      cp TEXT,
+      poblacion TEXT,
+      provincia TEXT,
+      telefono TEXT,
+      email TEXT,
+      nif TEXT,
+      zona_reparto TEXT DEFAULT 'ZONA MURCIA',
+      es_interno INTEGER DEFAULT 0,
+      origen TEXT DEFAULT 'manual',
+      created_at TEXT DEFAULT (datetime('now','localtime')),
+      updated_at TEXT DEFAULT (datetime('now','localtime')),
+      UNIQUE(nombre, nif)
+    );
+
     CREATE TABLE IF NOT EXISTS pedido_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       pedido_id INTEGER NOT NULL REFERENCES pedidos(id) ON DELETE CASCADE,
@@ -75,8 +94,12 @@ function init() {
       tienda TEXT NOT NULL DEFAULT 'murcia',
       contenido TEXT NOT NULL,
       autor_id INTEGER REFERENCES users(id),
+      categoria TEXT DEFAULT 'general',
+      prioridad TEXT DEFAULT 'normal',
+      estado TEXT DEFAULT 'abierta',
       pinned INTEGER DEFAULT 0,
-      created_at TEXT DEFAULT (datetime('now','localtime'))
+      created_at TEXT DEFAULT (datetime('now','localtime')),
+      updated_at TEXT DEFAULT (datetime('now','localtime'))
     );
 
     CREATE TABLE IF NOT EXISTS productos (
@@ -302,6 +325,38 @@ function init() {
   try { db.exec(`ALTER TABLE users ADD COLUMN last_seen TEXT`); } catch {}
   try { db.exec(`ALTER TABLE users ADD COLUMN tienda TEXT DEFAULT 'murcia'`); } catch {}
   try { db.exec(`ALTER TABLE users ADD COLUMN whatsapp_numero TEXT`); } catch {}
+  try { db.exec(`ALTER TABLE clientes ADD COLUMN codigo_externo TEXT`); } catch {}
+  try { db.exec(`ALTER TABLE clientes ADD COLUMN direccion TEXT`); } catch {}
+  try { db.exec(`ALTER TABLE clientes ADD COLUMN cp TEXT`); } catch {}
+  try { db.exec(`ALTER TABLE clientes ADD COLUMN poblacion TEXT`); } catch {}
+  try { db.exec(`ALTER TABLE clientes ADD COLUMN provincia TEXT`); } catch {}
+  try { db.exec(`ALTER TABLE clientes ADD COLUMN telefono TEXT`); } catch {}
+  try { db.exec(`ALTER TABLE clientes ADD COLUMN email TEXT`); } catch {}
+  try { db.exec(`ALTER TABLE clientes ADD COLUMN nif TEXT`); } catch {}
+  try { db.exec(`ALTER TABLE clientes ADD COLUMN zona_reparto TEXT DEFAULT 'ZONA MURCIA'`); } catch {}
+  try { db.exec(`ALTER TABLE clientes ADD COLUMN es_interno INTEGER DEFAULT 0`); } catch {}
+  try { db.exec(`ALTER TABLE clientes ADD COLUMN origen TEXT DEFAULT 'manual'`); } catch {}
+  try { db.exec(`ALTER TABLE clientes ADD COLUMN updated_at TEXT DEFAULT (datetime('now','localtime'))`); } catch {}
+  try {
+    db.exec(`
+      DELETE FROM clientes
+      WHERE codigo_externo IS NOT NULL
+        AND codigo_externo <> ''
+        AND id NOT IN (
+          SELECT MIN(id)
+          FROM clientes
+          WHERE codigo_externo IS NOT NULL AND codigo_externo <> ''
+          GROUP BY codigo_externo
+        )
+    `);
+  } catch {}
+  try {
+    db.exec(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_clientes_codigo_externo
+      ON clientes(codigo_externo)
+      WHERE codigo_externo IS NOT NULL AND codigo_externo <> ''
+    `);
+  } catch {}
   try { db.exec(`ALTER TABLE pedidos ADD COLUMN zona_reparto TEXT DEFAULT 'ZONA MURCIA'`); } catch {}
   try { db.exec(`ALTER TABLE pedidos ADD COLUMN tienda TEXT NOT NULL DEFAULT 'murcia'`); } catch {}
   try { db.exec(`ALTER TABLE tareas ADD COLUMN categoria TEXT DEFAULT 'general'`); } catch {}
@@ -322,6 +377,19 @@ function init() {
   try { db.exec(`ALTER TABLE salidas_dinero ADD COLUMN tienda TEXT NOT NULL DEFAULT 'murcia'`); } catch {}
   try { db.exec(`ALTER TABLE checklist_registros ADD COLUMN tienda TEXT NOT NULL DEFAULT 'murcia'`); } catch {}
   try { db.exec(`ALTER TABLE rutas_comerciales ADD COLUMN tienda TEXT NOT NULL DEFAULT 'murcia'`); } catch {}
+
+  try {
+    db.exec(`ALTER TABLE notas ADD COLUMN categoria TEXT DEFAULT 'general'`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE notas ADD COLUMN prioridad TEXT DEFAULT 'normal'`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE notas ADD COLUMN estado TEXT DEFAULT 'abierta'`);
+  } catch {}
+  try {
+    db.exec(`ALTER TABLE notas ADD COLUMN updated_at TEXT DEFAULT (datetime('now','localtime'))`);
+  } catch {}
 
   try {
     const cajaDiasSql = db.prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'caja_dias'`).get()?.sql || '';
@@ -514,6 +582,11 @@ function init() {
     const hash = bcrypt.hashSync('atomx2024', 10);
     db.prepare(`INSERT INTO users (nombre, email, password_hash, rol, tienda) VALUES (?, ?, ?, ?, ?)`).run('Andrea', 'andrea@atomx.com', hash, 'empleado', 'murcia');
   }
+
+  try {
+    const { importClientesFactusol } = require('./services/clientesFactusol');
+    importClientesFactusol();
+  } catch {}
 }
 
 function log(tabla, registro_id, accion, usuario_id, datos) {

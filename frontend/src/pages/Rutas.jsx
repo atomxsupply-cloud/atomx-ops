@@ -1,17 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, ExternalLink, Loader2, MapPinned, Navigation, Search, UserRound } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { ArrowDown, ArrowUp, CheckCircle2, ExternalLink, Loader2, MapPinned, Navigation, Search, UserRound } from 'lucide-react';
 import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import api from '../api/client';
+import ChipSelect from '../components/ui/ChipSelect';
 
 const PERSON_COLORS = {
   Juanfran: '#2563eb',
-  Juanje: '#16a34a',
   Papi: '#f97316',
   Maria: '#ec4899',
-  Lida: '#d946ef',
 };
+
+const RUTA_PEOPLE = ['Juanfran', 'Maria', 'Papi'];
 
 const DEFAULT_CENTER = [37.9922, -1.1307];
 const MURCIA_BOUNDS = [
@@ -22,7 +24,7 @@ const MURCIA_BOUNDS = [
 const EMPTY_FORM = {
   estudio: '',
   direccion: '',
-  hora: '',
+  turno: 'manana',
   nota: '',
   lat: null,
   lng: null,
@@ -75,16 +77,31 @@ function buildQuery(text) {
   return `${q} tattoo studio tatuaje micropigmentacion belleza`;
 }
 
+function getTurnoValue(route) {
+  return String(route?.turno || route?.hora || '').trim().toLowerCase();
+}
+
+function getTurnoLabel(route) {
+  const turno = getTurnoValue(route);
+  if (turno === 'manana') return 'Manana';
+  if (turno === 'tarde') return 'Tarde';
+  return 'Sin turno';
+}
+
 export default function Rutas() {
+  const [searchParams] = useSearchParams();
   const [form, setForm] = useState(EMPTY_FORM);
   const [users, setUsers] = useState([]);
   const [pendingRoutes, setPendingRoutes] = useState([]);
   const [paidRoutes, setPaidRoutes] = useState([]);
+  const [turnoView, setTurnoView] = useState('todos');
+  const [manualOrder, setManualOrder] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
   const [searching, setSearching] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState(searchParams.get('search') || '');
 
   async function loadAll() {
     setLoading(true);
@@ -94,9 +111,10 @@ export default function Rutas() {
         api.get('/rutas?estado=pendiente'),
         api.get('/rutas?estado=pagado'),
       ]);
-      setUsers(usersRes.data || []);
+      setUsers((usersRes.data || []).filter((user) => RUTA_PEOPLE.includes(user.nombre)));
       setPendingRoutes(pendingRes.data?.rutas || []);
       setPaidRoutes(paidRes.data?.rutas || []);
+      setManualOrder((pendingRes.data?.rutas || []).map((route) => route.id));
       setError('');
     } catch (err) {
       setError(err.response?.data?.error || 'No he podido cargar rutas');
@@ -136,12 +154,33 @@ export default function Rutas() {
 
   const orderedRoutes = useMemo(() => (
     [...pendingRoutes].sort((a, b) => {
-      const hourA = String(a.hora || '99:99');
-      const hourB = String(b.hora || '99:99');
-      if (hourA !== hourB) return hourA.localeCompare(hourB);
+      const turnoOrder = { manana: 0, tarde: 1 };
+      const turnoA = getTurnoValue(a);
+      const turnoB = getTurnoValue(b);
+      const orderA = turnoOrder[turnoA] ?? 9;
+      const orderB = turnoOrder[turnoB] ?? 9;
+      if (orderA !== orderB) return orderA - orderB;
       return String(a.estudio || '').localeCompare(String(b.estudio || ''));
     })
   ), [pendingRoutes]);
+
+  const visibleRoutes = useMemo(() => {
+    const normalizedSearch = String(search || '').trim().toLowerCase();
+    const base = orderedRoutes.filter((route) => {
+      if (turnoView !== 'todos' && getTurnoValue(route) !== turnoView) return false;
+      if (!normalizedSearch) return true;
+      return [route.estudio, route.direccion, route.nota, route.asignado_nombre]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(normalizedSearch));
+    });
+    const orderMap = new Map(manualOrder.map((id, index) => [id, index]));
+    return [...base].sort((a, b) => (orderMap.get(a.id) ?? 999) - (orderMap.get(b.id) ?? 999));
+  }, [orderedRoutes, turnoView, manualOrder, search]);
+
+  const resumenTurnos = useMemo(() => ({
+    manana: pendingRoutes.filter((route) => getTurnoValue(route) === 'manana').length,
+    tarde: pendingRoutes.filter((route) => getTurnoValue(route) === 'tarde').length,
+  }), [pendingRoutes]);
 
   function updateForm(key, value) {
     setForm((current) => ({
@@ -163,6 +202,41 @@ export default function Rutas() {
     setError('');
   }
 
+  function moveRoute(routeId, direction) {
+    setManualOrder((current) => {
+      const copy = [...current];
+      const index = copy.indexOf(routeId);
+      if (index === -1) return current;
+      const nextIndex = direction === 'up' ? index - 1 : index + 1;
+      if (nextIndex < 0 || nextIndex >= copy.length) return current;
+      [copy[index], copy[nextIndex]] = [copy[nextIndex], copy[index]];
+      return copy;
+    });
+  }
+
+  function exportVisibleRoutes() {
+    const routable = visibleRoutes.filter((route) => route?.direccion || (route?.lat && route?.lng));
+    if (!routable.length) return;
+
+    const points = routable.map((route) => (
+      route.lat && route.lng
+        ? `${route.lat},${route.lng}`
+        : encodeURIComponent(route.direccion)
+    ));
+
+    let url = '';
+    if (points.length === 1) {
+      url = `https://www.google.com/maps/search/?api=1&query=${points[0]}`;
+    } else {
+      const origin = points[0];
+      const destination = points[points.length - 1];
+      const waypoints = points.slice(1, -1).join('|');
+      url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}${waypoints ? `&waypoints=${waypoints}` : ''}&travelmode=driving`;
+    }
+
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+
   async function saveRoute() {
     if (!form.estudio.trim() || saving) return;
     setSaving(true);
@@ -170,7 +244,7 @@ export default function Rutas() {
       await api.post('/rutas', {
         estudio: form.estudio.trim(),
         direccion: form.direccion.trim(),
-        hora: form.hora || null,
+        turno: form.turno || null,
         nota: form.nota.trim(),
         lat: form.lat,
         lng: form.lng,
@@ -201,11 +275,22 @@ export default function Rutas() {
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Rutas comerciales</h1>
           <p className="text-slate-500 text-sm">
-            Escribe el estudio, te saco direccion sola, te la pongo en mapa y la asignas a quien la lleve.
+            Todo va por turnos. Escribe el estudio, te saco la direccion y lo dejas asignado en dos toques.
           </p>
         </div>
-        <div className="rounded-2xl bg-slate-900 text-white px-4 py-3 text-sm font-medium">
-          Pendientes: {pendingRoutes.length}
+        <div className="grid min-w-[250px] grid-cols-3 gap-2 rounded-2xl bg-slate-900 p-2 text-center text-white">
+          <div className="rounded-xl bg-white/10 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-white/70">Total</p>
+            <p className="text-base font-semibold">{pendingRoutes.length}</p>
+          </div>
+          <div className="rounded-xl bg-white/10 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-white/70">Manana</p>
+            <p className="text-base font-semibold">{resumenTurnos.manana}</p>
+          </div>
+          <div className="rounded-xl bg-white/10 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-white/70">Tarde</p>
+            <p className="text-base font-semibold">{resumenTurnos.tarde}</p>
+          </div>
         </div>
       </div>
 
@@ -270,30 +355,32 @@ export default function Rutas() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="label" htmlFor="ruta-hora">Hora</label>
-                <input
-                  id="ruta-hora"
-                  name="ruta_hora"
-                  type="time"
-                  value={form.hora}
-                  onChange={(e) => updateForm('hora', e.target.value)}
-                  className="input"
-                />
+                <label className="label">Turno</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => updateForm('turno', 'manana')}
+                    className={`btn ${form.turno === 'manana' ? 'bg-slate-900 text-white border-slate-900' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                  >
+                    Manana
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateForm('turno', 'tarde')}
+                    className={`btn ${form.turno === 'tarde' ? 'bg-slate-900 text-white border-slate-900' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                  >
+                    Tarde
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="label" htmlFor="ruta-asignado">Quien la lleva</label>
-                <select
-                  id="ruta-asignado"
-                  name="ruta_asignado"
+                <ChipSelect
                   value={form.asignado_a}
-                  onChange={(e) => updateForm('asignado_a', e.target.value)}
-                  className="input"
-                >
-                  <option value="">Sin asignar</option>
-                  {users.map((user) => (
-                    <option key={user.id} value={user.id}>{user.nombre}</option>
-                  ))}
-                </select>
+                  onChange={(v) => updateForm('asignado_a', v)}
+                  allowEmpty
+                  options={users.map((u) => ({ value: u.id, label: u.nombre }))}
+                />
               </div>
             </div>
 
@@ -305,7 +392,7 @@ export default function Rutas() {
                 value={form.nota}
                 onChange={(e) => updateForm('nota', e.target.value)}
                 className="input h-24 resize-none"
-                placeholder="Horario, persona de contacto, lo que haya que llevar..."
+                placeholder="Persona, material o detalle importante..."
               />
             </div>
 
@@ -346,7 +433,7 @@ export default function Rutas() {
                             <p className="text-xs text-slate-500">{route.direccion || 'Sin direccion'}</p>
                           </div>
                           <div className="text-xs text-slate-600 space-y-1">
-                            <p><strong>Hora:</strong> {route.hora || 'Sin hora'}</p>
+                            <p><strong>Turno:</strong> {getTurnoLabel(route)}</p>
                             <p><strong>Lleva:</strong> {route.asignado_nombre || 'Sin asignar'}</p>
                           </div>
                           <div className="flex gap-2 pt-1">
@@ -374,18 +461,53 @@ export default function Rutas() {
           </div>
 
           <div className="card">
-            <div className="flex items-center gap-2 mb-4">
-              <UserRound size={16} className="text-atomx-500" />
-              <h2 className="text-sm font-semibold text-slate-800">Planning automatico</h2>
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2">
+                <UserRound size={16} className="text-atomx-500" />
+                <h2 className="text-sm font-semibold text-slate-800">Planning automatico</h2>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="input min-w-[220px]"
+                  placeholder="Buscar parada concreta..."
+                />
+                {[
+                  { value: 'todos', label: 'Todos' },
+                  { value: 'manana', label: 'Manana' },
+                  { value: 'tarde', label: 'Tarde' },
+                ].map((item) => (
+                  <button
+                    key={item.value}
+                    type="button"
+                    onClick={() => setTurnoView(item.value)}
+                    className={`rounded-xl border px-3 py-2 text-xs font-medium ${
+                      turnoView === item.value
+                        ? 'border-slate-900 bg-slate-900 text-white'
+                        : 'border-slate-200 bg-white text-slate-600'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={exportVisibleRoutes}
+                  className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700"
+                >
+                  Exportar a Maps
+                </button>
+              </div>
             </div>
 
             {loading ? (
               <div className="flex items-center gap-2 text-sm text-slate-500">
                 <Loader2 size={16} className="animate-spin" /> Cargando rutas...
               </div>
-            ) : orderedRoutes.length ? (
+            ) : visibleRoutes.length ? (
               <div className="space-y-2">
-                {orderedRoutes.map((route) => {
+                {visibleRoutes.map((route) => {
                         const badgeColor = PERSON_COLORS[route.asignado_nombre] || '#0f172a';
                         return (
                           <div key={route.id} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
@@ -396,17 +518,33 @@ export default function Rutas() {
                                 {route.nota ? <p className="text-xs text-slate-500 mt-2">{route.nota}</p> : null}
                               </div>
                               <div className="flex flex-col items-end gap-2">
-                                <span className="text-xs text-slate-500">{route.hora || 'Sin hora'}</span>
+                                <span className="text-xs text-slate-500">{getTurnoLabel(route)}</span>
                                 <span className="inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[11px] font-medium text-white" style={{ backgroundColor: badgeColor }}>
                                   {route.asignado_nombre || 'Sin asignar'}
                                 </span>
-                                <button
-                                  onClick={() => markPaid(route.id)}
-                                  className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 flex items-center justify-center"
-                                  title="Marcar como pagado"
-                                >
-                                  <CheckCircle2 size={18} />
-                                </button>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => moveRoute(route.id, 'up')}
+                                    className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-slate-700 hover:bg-slate-300"
+                                    title="Subir"
+                                  >
+                                    <ArrowUp size={16} />
+                                  </button>
+                                  <button
+                                    onClick={() => moveRoute(route.id, 'down')}
+                                    className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-slate-700 hover:bg-slate-300"
+                                    title="Bajar"
+                                  >
+                                    <ArrowDown size={16} />
+                                  </button>
+                                  <button
+                                    onClick={() => markPaid(route.id)}
+                                    className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                                    title="Marcar como pagado"
+                                  >
+                                    <CheckCircle2 size={18} />
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -414,7 +552,41 @@ export default function Rutas() {
                 })}
               </div>
             ) : (
-              <p className="text-sm text-slate-500">No hay rutas pendientes ahora mismo.</p>
+              <p className="text-sm text-slate-500">
+                {turnoView === 'todos' ? 'No hay rutas pendientes ahora mismo.' : `No hay rutas de ${turnoView === 'manana' ? 'manana' : 'tarde'} ahora mismo.`}
+              </p>
+            )}
+          </div>
+
+          <div className="card">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-slate-800">Pagadas hoy</h2>
+                <p className="text-xs text-slate-500">Para tener controlado lo ya hecho sin ensuciar las activas.</p>
+              </div>
+              <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700">
+                {paidRoutes.length}
+              </span>
+            </div>
+
+            {paidRoutes.length ? (
+              <div className="mt-4 space-y-2">
+                {paidRoutes.slice(0, 6).map((route) => (
+                  <div key={route.id} className="rounded-2xl border border-emerald-100 bg-emerald-50/60 px-3 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-800">{route.estudio}</p>
+                        <p className="mt-1 text-xs text-slate-500">{route.direccion || 'Sin direccion'}</p>
+                      </div>
+                      <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600">
+                        {getTurnoLabel(route)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-4 text-sm text-slate-500">Todavia no hay ninguna parada pasada a pagada.</p>
             )}
           </div>
         </div>

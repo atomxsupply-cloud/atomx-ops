@@ -11,9 +11,13 @@ import Stock from './pages/Stock';
 import Prestashop from './pages/Prestashop';
 import Caja from './pages/Caja';
 import Salidas from './pages/Salidas';
-import Asistente from './pages/Asistente';
 import Rutas from './pages/Rutas';
 import Fichajes from './pages/Fichajes';
+import Direccion from './pages/Direccion';
+import Clientes from './pages/Clientes';
+import Factusol from './pages/Factusol';
+import Buscador from './pages/Buscador';
+import DesignIA from './pages/DesignIA';
 import { canAccessSection } from './utils/permissions';
 
 function PrivateRoute({ children }) {
@@ -55,9 +59,13 @@ export default function App() {
             <Route path="prestashop" element={<SectionRoute section="prestashop"><Prestashop /></SectionRoute>} />
             <Route path="caja" element={<SectionRoute section="caja"><Caja /></SectionRoute>} />
             <Route path="salidas" element={<SectionRoute section="salidas"><Salidas /></SectionRoute>} />
-            <Route path="asistente" element={<SectionRoute section="ia"><Asistente /></SectionRoute>} />
             <Route path="rutas" element={<SectionRoute section="rutas"><Rutas /></SectionRoute>} />
             <Route path="fichajes" element={<SectionRoute section="fichajes"><Fichajes /></SectionRoute>} />
+            <Route path="direccion" element={<SectionRoute section="direccion"><Direccion /></SectionRoute>} />
+            <Route path="buscador" element={<SectionRoute section="buscador"><Buscador /></SectionRoute>} />
+            <Route path="design-ia" element={<SectionRoute section="designia"><DesignIA /></SectionRoute>} />
+            <Route path="clientes" element={<SectionRoute section="clientes"><Clientes /></SectionRoute>} />
+            <Route path="factusol" element={<SectionRoute section="factusol"><Factusol /></SectionRoute>} />
           </Route>
         </Routes>
       </BrowserRouter>

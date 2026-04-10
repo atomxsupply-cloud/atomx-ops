@@ -28,6 +28,8 @@ export default function Fichajes() {
   const { user } = useAuth();
   const [estado, setEstado] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [actionLoading, setActionLoading] = useState('');
   const [exportInfo, setExportInfo] = useState(null);
   const [historial, setHistorial] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
@@ -45,6 +47,7 @@ export default function Fichajes() {
       setEstado(estadoRes.data || []);
       setHistorial(historialRes.data?.items || []);
       setCanViewAll(!!historialRes.data?.canViewAll);
+      setError('');
     } finally {
       setLoading(false);
     }
@@ -72,8 +75,16 @@ export default function Fichajes() {
   const miTiempoActual = useMemo(() => computeLiveWorkedSeconds(miFichaje), [miFichaje, nowTick]);
 
   async function accion(path) {
-    await api.post(`/fichajes/${path}`);
-    load();
+    setActionLoading(path);
+    try {
+      await api.post(`/fichajes/${path}`);
+      setError('');
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.error || 'No he podido hacer esa accion en fichajes.');
+    } finally {
+      setActionLoading('');
+    }
   }
 
   async function exportarTresMeses() {
@@ -100,6 +111,12 @@ export default function Fichajes() {
         </button>
       </div>
 
+      {error ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
+
       {exportInfo && (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           Exportado listo para Excel: <strong>{exportInfo.archivo}</strong>
@@ -112,24 +129,24 @@ export default function Fichajes() {
       <div className="card">
         <div className="flex flex-wrap gap-3">
           {!miFichaje ? (
-            <button onClick={() => accion('start')} className="btn-primary inline-flex items-center gap-2">
+            <button onClick={() => accion('start')} disabled={!!actionLoading} className="btn-primary inline-flex items-center gap-2 disabled:opacity-50">
               <PlayCircle size={16} /> Empezar jornada
             </button>
           ) : miFichaje.estado === 'trabajando' ? (
             <>
-              <button onClick={() => accion('pause')} className="btn inline-flex items-center gap-2 border border-slate-200 text-slate-700">
+              <button onClick={() => accion('pause')} disabled={!!actionLoading} className="btn inline-flex items-center gap-2 border border-slate-200 text-slate-700 disabled:opacity-50">
                 <PauseCircle size={16} /> Pausa
               </button>
-              <button onClick={() => accion('stop')} className="btn-primary inline-flex items-center gap-2">
+              <button onClick={() => accion('stop')} disabled={!!actionLoading} className="btn-primary inline-flex items-center gap-2 disabled:opacity-50">
                 <TimerReset size={16} /> Terminar jornada
               </button>
             </>
           ) : (
             <>
-              <button onClick={() => accion('resume')} className="btn-primary inline-flex items-center gap-2">
+              <button onClick={() => accion('resume')} disabled={!!actionLoading} className="btn-primary inline-flex items-center gap-2 disabled:opacity-50">
                 <PlayCircle size={16} /> Volver al trabajo
               </button>
-              <button onClick={() => accion('stop')} className="btn inline-flex items-center gap-2 border border-slate-200 text-slate-700">
+              <button onClick={() => accion('stop')} disabled={!!actionLoading} className="btn inline-flex items-center gap-2 border border-slate-200 text-slate-700 disabled:opacity-50">
                 <TimerReset size={16} /> Cerrar jornada
               </button>
             </>

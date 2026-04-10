@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { AlertTriangle, Bug, Camera, Loader2, Mic, MicOff, Wrench, X } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import api from '../api/client';
-import { useFloatingPosition } from '../utils/floating';
+import { useFloatingPosition } from '../utils/floating.js';
 import { useAuth } from '../context/AuthContext';
 
 const WORKERS = [

@@ -2,7 +2,6 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { useState } from 'react';
 import { Menu } from 'lucide-react';
-import FloatingAtomChat from './FloatingAtomChat';
 import NotificationsBell from './NotificationsBell';
 import TopNavTabs from './TopNavTabs';
 
@@ -42,8 +41,6 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
-
-      <FloatingAtomChat />
     </div>
   );
 }

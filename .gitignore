@@ -13,6 +13,10 @@ backend/atomx.db
 backend/atomx.db-shm
 backend/atomx.db-wal
 backend/*.log
+datos/
+seguridad atomx ops/
+HANDOFF_*.md
+PENDIENTES_*.md
 
 # Builds
 frontend/dist/

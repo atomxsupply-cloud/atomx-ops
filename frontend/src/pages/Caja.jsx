@@ -1,349 +1,397 @@
 import { useEffect, useState } from 'react';
+import { Camera, Lock, Sun, Sunset, Unlock } from 'lucide-react';
 import api from '../api/client';
-import { DollarSign, Plus, Lock, Unlock, TrendingUp, TrendingDown, AlertCircle, RotateCcw } from 'lucide-react';
 import Modal from '../components/Modal';
+import PhotoCajaAssistant from '../components/PhotoCajaAssistant';
+import { useAuth } from '../context/AuthContext';
 
-const METODOS = ['efectivo', 'tarjeta', 'bizum', 'transferencia'];
+const APERTURA_FIJA = 100;
 
-export default function Caja() {
-  const [caja, setCaja] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [showAbrir, setShowAbrir] = useState(false);
-  const [showCerrar, setShowCerrar] = useState(false);
-  const [showMovimiento, setShowMovimiento] = useState(false);
-  const [apertura, setApertura] = useState('');
-  const [cierre, setCierre] = useState('');
-  const [obsCierre, setObsCierre] = useState('');
-  const [movForm, setMovForm] = useState({ tipo: 'ingreso', concepto: '', importe: '', metodo_pago: 'efectivo' });
-  const [saving, setSaving] = useState(false);
-  const [resultado, setResultado] = useState(null);
-  const [turnos, setTurnos] = useState({
-    manana_cierre: '',
-    tarde_apertura: '',
-    tarde_cierre: '',
-    ajuste_factusol: '',
-  });
+function toNumberInput(value) {
+  if (value === null || value === undefined || value === '') return '';
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? String(parsed) : '';
+}
 
-  const load = () => api.get('/caja/hoy').then(r => {
-    setCaja(r.data);
-    setTurnos({
-      manana_cierre: r.data?.resumen_turnos?.manana?.cierre ?? '',
-      tarde_apertura: r.data?.resumen_turnos?.tarde?.apertura ?? '',
-      tarde_cierre: r.data?.resumen_turnos?.tarde?.cierre ?? '',
-      ajuste_factusol: r.data?.resumen_turnos?.tarde?.ajuste_factusol ?? '',
-    });
-  }).finally(() => setLoading(false));
-  useEffect(() => { load(); }, []);
+function parseNullableNumber(value) {
+  if (value === '' || value === null || value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
 
-  async function guardarTurno(turno) {
-    setSaving(true);
-    try {
-      if (turno === 'manana') {
-        await api.post('/caja/turno', { turno, cierre: parseFloat(turnos.manana_cierre) || 0 });
-      } else {
-        await api.post('/caja/turno', {
-          turno,
-          apertura: parseFloat(turnos.tarde_apertura) || 0,
-          cierre: turnos.tarde_cierre !== '' ? parseFloat(turnos.tarde_cierre) : null,
-          ajuste_factusol: parseFloat(turnos.ajuste_factusol) || 0,
-        });
-      }
-      load();
-    } finally {
-      setSaving(false);
-    }
-  }
+function formatMoney(value) {
+  return `${Number(value || 0).toFixed(2)} EUR`;
+}
 
-  async function abrirCaja(e) {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      await api.post('/caja/abrir', { apertura_importe: parseFloat(apertura) || 0 });
-      setShowAbrir(false);
-      setApertura('');
-      load();
-    } finally { setSaving(false); }
-  }
+function TurnoCircle({ title, subtitle, icon: Icon, active, locked, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={locked}
+      className={`flex min-h-[190px] flex-col items-center justify-center rounded-[2rem] border px-5 text-center transition-all ${
+        locked
+          ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400'
+          : active
+            ? 'border-slate-900 bg-slate-900 text-white shadow-xl'
+            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:shadow-md'
+      }`}
+    >
+      <span className={`mb-4 flex h-16 w-16 items-center justify-center rounded-full ${active ? 'bg-white/10' : 'bg-slate-100'}`}>
+        <Icon size={28} />
+      </span>
+      <p className="text-xl font-bold">{title}</p>
+      <p className={`mt-2 max-w-[220px] text-sm leading-5 ${active ? 'text-white/75' : 'text-slate-500'}`}>{subtitle}</p>
+      {locked ? <span className="mt-4 rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-500">Bloqueada</span> : null}
+    </button>
+  );
+}
 
-  async function cerrarCaja(e) {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const r = await api.post('/caja/cerrar', { cierre_importe: parseFloat(cierre), observaciones: obsCierre });
-      setResultado(r.data);
-      setShowCerrar(false);
-      load();
-    } finally { setSaving(false); }
-  }
-
-  async function addMovimiento(e) {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      await api.post('/caja/movimiento', { ...movForm, importe: parseFloat(movForm.importe) });
-      setShowMovimiento(false);
-      setMovForm({ tipo: 'ingreso', concepto: '', importe: '', metodo_pago: 'efectivo' });
-      load();
-    } finally { setSaving(false); }
-  }
-
-  async function resetCaja() {
-    if (!confirm('Esto reinicia la caja de hoy a cero y borra los movimientos del dia. ¿Seguimos?')) return;
-    setSaving(true);
-    try {
-      await api.post('/caja/reset');
-      setResultado(null);
-      setTurnos({
-        manana_cierre: '',
-        tarde_apertura: '',
-        tarde_cierre: '',
-        ajuste_factusol: '',
-      });
-      load();
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  if (loading) return <div className="text-slate-400 text-sm text-center py-8">Cargando...</div>;
+function QuickHint({ label, value, tone = 'slate' }) {
+  const tones = {
+    slate: 'border-slate-200 bg-slate-50 text-slate-700',
+    green: 'border-green-200 bg-green-50 text-green-700',
+    red: 'border-red-200 bg-red-50 text-red-700',
+  };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className={`rounded-2xl border px-4 py-3 ${tones[tone] || tones.slate}`}>
+      <p className="text-xs font-medium uppercase tracking-[0.18em] opacity-70">{label}</p>
+      <p className="mt-2 text-2xl font-bold">{value}</p>
+    </div>
+  );
+}
+
+function addAmount(value, amount) {
+  const base = Number(value || 0);
+  return String(Number((base + amount).toFixed(2)));
+}
+
+function QuickAmountPad({ title, onAdd, onReset }) {
+  const amounts = [5, 10, 20, 50, 100, 200];
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <p className="text-sm font-semibold text-slate-700">{title}</p>
+        <button type="button" onClick={onReset} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-500">
+          Borrar
+        </button>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {amounts.map((amount) => (
+          <button
+            key={amount}
+            type="button"
+            onClick={() => onAdd(amount)}
+            className="rounded-2xl border border-slate-200 bg-white px-3 py-4 text-base font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-100"
+          >
+            +{amount}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function Caja() {
+  const { user } = useAuth();
+  const [caja, setCaja] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState('');
+  const [activeMenu, setActiveMenu] = useState('manana');
+  const [showFotoCaja, setShowFotoCaja] = useState(false);
+  const [cierreManana, setCierreManana] = useState('');
+  const [ajusteFactusol, setAjusteFactusol] = useState('');
+  const [cierreTarde, setCierreTarde] = useState('');
+  const [activeField, setActiveField] = useState('manana');
+
+  async function load() {
+    setLoading(true);
+    try {
+      const response = await api.get('/caja/hoy');
+      const data = response.data;
+      setCaja(data);
+      setCierreManana(toNumberInput(data?.resumen_turnos?.manana?.cierre));
+      setAjusteFactusol(toNumberInput(data?.resumen_turnos?.tarde?.ajuste_factusol));
+      setCierreTarde(toNumberInput(data?.resumen_turnos?.tarde?.cierre));
+      setActiveField(data?.resumen_turnos?.manana?.cierre != null ? 'factusol' : 'manana');
+      setError('');
+    } catch (err) {
+      setError(err.response?.data?.error || 'No he podido cargar la caja.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const mananaCerrada = parseNullableNumber(cierreManana) != null || parseNullableNumber(caja?.manana_cierre) != null;
+  const efectivoManana = parseNullableNumber(cierreManana) ?? Number(caja?.resumen_turnos?.manana?.generado || 0);
+  const factusolTarde = parseNullableNumber(ajusteFactusol) ?? Number(caja?.resumen_turnos?.tarde?.ajuste_factusol || 0);
+  const efectivoTarde = parseNullableNumber(cierreTarde) ?? Number(caja?.resumen_turnos?.tarde?.generado || 0);
+  const descuadreTarde = Number((efectivoTarde - factusolTarde).toFixed(2));
+  const tardeCuadra = Math.abs(descuadreTarde) < 0.01;
+  const bloqueoManana = caja?.bloqueos?.manana;
+  const mananaLockedByPair = Boolean(bloqueoManana?.locked && bloqueoManana?.ownerId !== user?.id);
+
+  function applyQuickAmount(amount) {
+    if (activeField === 'manana') {
+      setCierreManana((current) => addAmount(current, amount));
+      return;
+    }
+    if (activeField === 'factusol') {
+      setAjusteFactusol((current) => addAmount(current, amount));
+      return;
+    }
+    setCierreTarde((current) => addAmount(current, amount));
+  }
+
+  function resetActiveField() {
+    if (activeField === 'manana') {
+      setCierreManana('');
+      return;
+    }
+    if (activeField === 'factusol') {
+      setAjusteFactusol('');
+      return;
+    }
+    setCierreTarde('');
+  }
+
+  function applyPhotoToCaja(data) {
+    setCierreManana(data.manana_cierre != null ? toNumberInput(data.manana_cierre) : cierreManana);
+    setAjusteFactusol(data.ajuste_factusol != null ? toNumberInput(data.ajuste_factusol) : ajusteFactusol);
+    setCierreTarde(data.tarde_cierre != null ? toNumberInput(data.tarde_cierre) : cierreTarde);
+    setShowFotoCaja(false);
+  }
+
+  async function abrirCajaManana() {
+    setSaving('abrir-manana');
+    try {
+      await api.post('/caja/abrir', {});
+      await load();
+      setError('');
+    } catch (err) {
+      setError(err.response?.data?.error || 'No he podido abrir la caja de manana.');
+    } finally {
+      setSaving('');
+    }
+  }
+
+  async function guardarManana() {
+    setSaving('guardar-manana');
+    try {
+      await api.post('/caja/turno', {
+        turno: 'manana',
+        cierre: parseNullableNumber(cierreManana),
+      });
+      await load();
+      setActiveMenu('tarde');
+      setError('');
+    } catch (err) {
+      setError(err.response?.data?.error || 'No he podido guardar la caja de manana.');
+    } finally {
+      setSaving('');
+    }
+  }
+
+  async function guardarTarde() {
+    setSaving('guardar-tarde');
+    try {
+      await api.post('/caja/turno', {
+        turno: 'tarde',
+        cierre: parseNullableNumber(cierreTarde),
+        ajuste_factusol: parseNullableNumber(ajusteFactusol) ?? 0,
+      });
+      await load();
+      setError('');
+    } catch (err) {
+      setError(err.response?.data?.error || 'No he podido guardar la caja de tarde.');
+    } finally {
+      setSaving('');
+    }
+  }
+
+  if (loading) return <div className="py-8 text-center text-sm text-slate-400">Cargando...</div>;
+
+  return (
+    <div className="space-y-6 pb-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Caja</h1>
-          <p className="text-slate-500 text-sm">{new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+          <p className="text-sm text-slate-500">Siempre empezamos con 100 EUR. Aqui solo contamos el efectivo generado.</p>
         </div>
-        {caja ? (
-          <div className="flex gap-2">
-            {caja.estado === 'abierta' && <>
-              <button onClick={resetCaja} className="btn flex items-center gap-1.5 border border-slate-200 text-slate-600 text-sm">
-                <RotateCcw size={15} /> Reiniciar caja
-              </button>
-              <button onClick={() => setShowMovimiento(true)} className="btn-primary flex items-center gap-1.5 text-sm"><Plus size={15} /> Movimiento</button>
-              <button onClick={() => setShowCerrar(true)} className="btn flex items-center gap-1.5 border border-slate-200 text-slate-600 text-sm"><Lock size={15} /> Cerrar caja</button>
-            </>}
-          </div>
-        ) : (
-          <button onClick={() => setShowAbrir(true)} className="btn-primary flex items-center gap-1.5"><Unlock size={15} /> Abrir caja</button>
-        )}
+        <button onClick={() => setShowFotoCaja(true)} className="btn flex items-center gap-2 border border-slate-200 text-slate-700">
+          <Camera size={15} /> Leer foto
+        </button>
       </div>
 
-      {resultado && (
-        <div className={`rounded-xl border p-4 flex items-center gap-3 ${Math.abs(resultado.descuadre) < 0.01 ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
-          <AlertCircle size={20} />
-          <div>
-            <p className="font-medium">Caja cerrada</p>
-            <p className="text-sm">Esperado: {resultado.esperado.toFixed(2)}€ · Descuadre: {resultado.descuadre > 0 ? '+' : ''}{resultado.descuadre.toFixed(2)}€</p>
-          </div>
-          <button onClick={() => setResultado(null)} className="ml-auto opacity-60 hover:opacity-100">✕</button>
+      {error ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
         </div>
-      )}
+      ) : null}
 
-      {!caja ? (
-        <div className="card text-center py-12">
-          <DollarSign size={40} className="mx-auto mb-3 text-slate-300" />
-          <p className="text-slate-500 font-medium">La caja no está abierta</p>
-          <p className="text-slate-400 text-sm mb-4">Abre la caja para empezar a registrar movimientos</p>
-          <button onClick={() => setShowAbrir(true)} className="btn-primary inline-flex items-center gap-2"><Unlock size={16} /> Abrir caja</button>
-        </div>
-      ) : (
-        <>
-          {/* Resumen */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="card text-center">
-              <p className="text-xs text-slate-400 mb-1">Apertura</p>
-              <p className="text-xl font-bold text-slate-700">{caja.apertura_importe.toFixed(2)}€</p>
-            </div>
-            <div className="card text-center">
-              <p className="text-xs text-green-600 mb-1 flex items-center justify-center gap-1"><TrendingUp size={12} /> Ingresos</p>
-              <p className="text-xl font-bold text-green-600">+{caja.ingresos.toFixed(2)}€</p>
-            </div>
-            <div className="card text-center">
-              <p className="text-xs text-red-500 mb-1 flex items-center justify-center gap-1"><TrendingDown size={12} /> Gastos</p>
-              <p className="text-xl font-bold text-red-500">-{caja.gastos.toFixed(2)}€</p>
-            </div>
-            <div className={`card text-center ${caja.estado === 'cerrada' ? 'bg-slate-50' : 'bg-atomx-50 border-atomx-200'}`}>
-              <p className="text-xs text-slate-500 mb-1">Saldo actual</p>
-              <p className="text-xl font-bold text-atomx-600">{caja.saldo_real.toFixed(2)}€</p>
-            </div>
-          </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <TurnoCircle
+          title="Caja manana"
+          subtitle={caja ? (mananaCerrada ? 'Manana cerrada. El fondo de 100 EUR pasa a la tarde.' : 'Abre con 100 EUR y apunta solo el efectivo hecho.') : 'Abre la caja del dia con el fondo fijo.'}
+          icon={Sun}
+          active={activeMenu === 'manana'}
+          locked={false}
+          onClick={() => setActiveMenu('manana')}
+        />
+        <TurnoCircle
+          title="Caja tarde"
+          subtitle={mananaCerrada ? 'El mismo fondo de 100 EUR sigue. Lo importante es cuadrar efectivo y Factusol.' : 'Se desbloquea al cerrar la manana.'}
+          icon={Sunset}
+          active={activeMenu === 'tarde'}
+          locked={!mananaCerrada}
+          onClick={() => setActiveMenu('tarde')}
+        />
+      </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            <div className="card">
-              <p className="text-xs uppercase tracking-wide text-slate-500 mb-3">Caja de mañana</p>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-slate-500">Apertura</span><span>{Number(caja.resumen_turnos?.manana?.apertura || 0).toFixed(2)}€</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Esperado</span><span>{Number(caja.resumen_turnos?.manana?.esperado || 0).toFixed(2)}€</span></div>
-              </div>
-              <div className="mt-3 flex gap-2">
-                <input
-                  type="number"
-                  step="0.01"
-                  className="input"
-                  value={turnos.manana_cierre}
-                  onChange={(e) => setTurnos((t) => ({ ...t, manana_cierre: e.target.value }))}
-                  placeholder="Cierre mañana"
-                />
-                <button onClick={() => guardarTurno('manana')} disabled={saving} className="btn-primary whitespace-nowrap">
-                  Guardar
-                </button>
-              </div>
+      {activeMenu === 'manana' ? (
+        <div className="card space-y-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-800">Caja de manana</h2>
+              <p className="text-sm text-slate-500">Cuenta solo lo que has generado en efectivo, sin sumar los 100 EUR del fondo.</p>
             </div>
-
-            <div className="card">
-              <p className="text-xs uppercase tracking-wide text-slate-500 mb-3">Caja de tarde</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <input
-                  type="number"
-                  step="0.01"
-                  className="input"
-                  value={turnos.ajuste_factusol}
-                  onChange={(e) => setTurnos((t) => ({ ...t, ajuste_factusol: e.target.value }))}
-                  placeholder="Resta Factusol"
-                />
-                <input
-                  type="number"
-                  step="0.01"
-                  className="input"
-                  value={turnos.tarde_apertura}
-                  onChange={(e) => setTurnos((t) => ({ ...t, tarde_apertura: e.target.value }))}
-                  placeholder="Apertura tarde"
-                />
-                <input
-                  type="number"
-                  step="0.01"
-                  className="input"
-                  value={turnos.tarde_cierre}
-                  onChange={(e) => setTurnos((t) => ({ ...t, tarde_cierre: e.target.value }))}
-                  placeholder="Cierre tarde"
-                />
-              </div>
-              <p className="text-xs text-slate-500 mt-2">
-                La apertura de tarde debe cuadrar con la mañana menos la operación final de Factusol.
-              </p>
-              <div className="mt-3">
-                <button onClick={() => guardarTurno('tarde')} disabled={saving} className="btn-primary">
-                  Guardar tarde
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Estado */}
-          <div className="flex items-center gap-2">
-            <span className={`badge ${caja.estado === 'abierta' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
-              {caja.estado === 'abierta' ? '🟢 Caja abierta' : '🔒 Caja cerrada'}
+            <span className={`rounded-full px-3 py-1 text-xs font-medium ${mananaCerrada ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
+              {mananaCerrada ? 'Guardada' : 'Pendiente'}
             </span>
           </div>
 
-          {/* Movimientos */}
-          <div className="card p-0 overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="font-semibold text-slate-700 text-sm">Movimientos del día</h2>
-              <span className="text-xs text-slate-400">{caja.movimientos?.length || 0} movimientos</span>
+          {mananaLockedByPair ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-800">
+              La caja de manana la esta llevando <span className="font-semibold">{bloqueoManana?.ownerName}</span>. Mientras siga abierta, el otro cajero de manana la vera bloqueada para no pisaros.
             </div>
-            {caja.movimientos?.length === 0 ? (
-              <div className="py-8 text-center text-slate-400 text-sm">Sin movimientos</div>
+          ) : null}
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <QuickHint label="Fondo fijo" value={formatMoney(APERTURA_FIJA)} />
+            <QuickHint label="Efectivo manana" value={formatMoney(efectivoManana)} tone={efectivoManana > 0 ? 'green' : 'slate'} />
+          </div>
+
+          <div>
+            <label className="label">Efectivo hecho en la manana</label>
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              className={`input h-16 text-2xl font-semibold ${activeField === 'manana' ? 'border-slate-900 ring-2 ring-slate-900/10' : ''}`}
+              value={cierreManana}
+              onChange={(e) => setCierreManana(e.target.value)}
+              onFocus={() => setActiveField('manana')}
+              placeholder="0.00"
+            />
+            <p className="mt-2 text-xs text-slate-500">No metas aqui los 100 EUR de fondo. Solo lo que realmente ha entrado en efectivo.</p>
+          </div>
+
+          <QuickAmountPad
+            title="Sumar rapido a manana"
+            onAdd={applyQuickAmount}
+            onReset={resetActiveField}
+          />
+
+          <div className="sticky bottom-3 z-10 flex flex-wrap justify-end gap-2 rounded-2xl border border-slate-200 bg-white/95 p-3 backdrop-blur">
+            {!caja ? (
+              <button onClick={abrirCajaManana} disabled={saving === 'abrir-manana'} className="btn-primary inline-flex items-center gap-2 disabled:opacity-50">
+                <Unlock size={15} /> {saving === 'abrir-manana' ? 'Abriendo...' : 'Abrir manana con 100 EUR'}
+              </button>
             ) : (
-              <div className="divide-y divide-slate-50">
-                {caja.movimientos?.map(m => (
-                  <div key={m.id} className="flex items-center gap-3 px-4 py-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${m.tipo === 'ingreso' ? 'bg-green-100' : 'bg-red-100'}`}>
-                      {m.tipo === 'ingreso' ? <TrendingUp size={14} className="text-green-600" /> : <TrendingDown size={14} className="text-red-500" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-700">{m.concepto}</p>
-                      <p className="text-xs text-slate-400">{m.metodo_pago} · {m.usuario} · {m.created_at?.substring(11, 16)}</p>
-                    </div>
-                    <p className={`text-sm font-bold flex-shrink-0 ${m.tipo === 'ingreso' ? 'text-green-600' : 'text-red-500'}`}>
-                      {m.tipo === 'ingreso' ? '+' : '-'}{m.importe.toFixed(2)}€
-                    </p>
-                  </div>
-                ))}
-              </div>
+              <button onClick={guardarManana} disabled={saving === 'guardar-manana' || mananaLockedByPair} className="btn-primary inline-flex items-center gap-2 disabled:opacity-50">
+                <Lock size={15} /> {mananaLockedByPair ? 'Bloqueada por otro cajero' : saving === 'guardar-manana' ? 'Guardando...' : 'Guardar manana'}
+              </button>
             )}
           </div>
-        </>
-      )}
+        </div>
+      ) : null}
 
-      {/* Modal abrir */}
-      {showAbrir && (
-        <Modal title="Abrir caja" onClose={() => setShowAbrir(false)}>
-          <form onSubmit={abrirCaja} className="space-y-4">
+      {activeMenu === 'tarde' ? (
+        <div className="card space-y-5">
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <label className="label">Importe de apertura (€)</label>
-              <input type="number" step="0.01" min="0" value={apertura} onChange={e => setApertura(e.target.value)} className="input text-lg" placeholder="0.00" autoFocus />
+              <h2 className="text-lg font-semibold text-slate-800">Caja de tarde</h2>
+              <p className="text-sm text-slate-500">La tarde vuelve a empezar con 100 EUR. Solo tiene que cuadrar el efectivo contado con Factusol.</p>
             </div>
-            <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => setShowAbrir(false)} className="btn-ghost">Cancelar</button>
-              <button type="submit" disabled={saving} className="btn-primary">{saving ? 'Abriendo...' : 'Abrir caja'}</button>
-            </div>
-          </form>
-        </Modal>
-      )}
+            <span className={`rounded-full px-3 py-1 text-xs font-medium ${tardeCuadra ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+              {tardeCuadra ? 'Cuadra' : `Diferencia ${descuadreTarde > 0 ? '+' : ''}${formatMoney(descuadreTarde)}`}
+            </span>
+          </div>
 
-      {/* Modal cerrar */}
-      {showCerrar && (
-        <Modal title="Cerrar caja" onClose={() => setShowCerrar(false)}>
-          <form onSubmit={cerrarCaja} className="space-y-4">
-            <div className="bg-slate-50 rounded-lg p-3 text-sm space-y-1">
-              <div className="flex justify-between"><span className="text-slate-500">Apertura</span><span>{caja?.apertura_importe.toFixed(2)}€</span></div>
-              <div className="flex justify-between"><span className="text-green-600">+ Ingresos</span><span className="text-green-600">+{caja?.ingresos.toFixed(2)}€</span></div>
-              <div className="flex justify-between"><span className="text-red-500">- Gastos</span><span className="text-red-500">-{caja?.gastos.toFixed(2)}€</span></div>
-              <div className="flex justify-between font-bold border-t border-slate-200 pt-1"><span>Esperado</span><span>{caja?.saldo_real.toFixed(2)}€</span></div>
-            </div>
-            <div>
-              <label className="label">Importe real en caja (€)</label>
-              <input type="number" step="0.01" min="0" value={cierre} onChange={e => setCierre(e.target.value)} className="input text-lg" placeholder="0.00" required autoFocus />
-            </div>
-            <div>
-              <label className="label">Observaciones</label>
-              <textarea value={obsCierre} onChange={e => setObsCierre(e.target.value)} className="input h-16 resize-none" placeholder="Notas del cierre..." />
-            </div>
-            <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => setShowCerrar(false)} className="btn-ghost">Cancelar</button>
-              <button type="submit" disabled={saving} className="btn-primary">{saving ? 'Cerrando...' : 'Cerrar caja'}</button>
-            </div>
-          </form>
-        </Modal>
-      )}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <QuickHint label="Fondo fijo tarde" value={formatMoney(APERTURA_FIJA)} />
+            <QuickHint label="Factusol" value={formatMoney(factusolTarde)} />
+            <QuickHint label="Efectivo tarde" value={formatMoney(efectivoTarde)} tone={efectivoTarde > 0 ? 'green' : 'slate'} />
+          </div>
 
-      {/* Modal movimiento */}
-      {showMovimiento && (
-        <Modal title="Nuevo movimiento" onClose={() => setShowMovimiento(false)}>
-          <form onSubmit={addMovimiento} className="space-y-3">
-            <div className="flex rounded-lg border border-slate-200 overflow-hidden">
-              <button type="button" onClick={() => setMovForm(f => ({ ...f, tipo: 'ingreso' }))} className={`flex-1 py-2.5 text-sm font-medium transition-colors ${movForm.tipo === 'ingreso' ? 'bg-green-500 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
-                <TrendingUp size={14} className="inline mr-1.5" />Ingreso
-              </button>
-              <button type="button" onClick={() => setMovForm(f => ({ ...f, tipo: 'gasto' }))} className={`flex-1 py-2.5 text-sm font-medium transition-colors ${movForm.tipo === 'gasto' ? 'bg-red-500 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
-                <TrendingDown size={14} className="inline mr-1.5" />Gasto
-              </button>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+            <p className="text-sm text-slate-500">Formula de tarde</p>
+            <p className="mt-2 text-lg font-semibold text-slate-800">Efectivo contado - Factusol = diferencia final</p>
+            <p className="mt-2 text-sm text-slate-500">Si la diferencia da 0, la caja de tarde esta fina.</p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label className="label">Factusol de la tarde</label>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                className={`input h-16 text-2xl font-semibold ${activeField === 'factusol' ? 'border-slate-900 ring-2 ring-slate-900/10' : ''}`}
+                value={ajusteFactusol}
+                onChange={(e) => setAjusteFactusol(e.target.value)}
+                onFocus={() => setActiveField('factusol')}
+                placeholder="0.00"
+              />
             </div>
             <div>
-              <label className="label">Concepto *</label>
-              <input value={movForm.concepto} onChange={e => setMovForm(f => ({ ...f, concepto: e.target.value }))} className="input" required placeholder="Ej: Venta Kwadron, Reposición guantes..." autoFocus />
+              <label className="label">Efectivo contado de la tarde</label>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                className={`input h-16 text-2xl font-semibold ${activeField === 'tarde' ? 'border-slate-900 ring-2 ring-slate-900/10' : ''}`}
+                value={cierreTarde}
+                onChange={(e) => setCierreTarde(e.target.value)}
+                onFocus={() => setActiveField('tarde')}
+                placeholder="0.00"
+              />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="label">Importe (€) *</label>
-                <input type="number" step="0.01" min="0" value={movForm.importe} onChange={e => setMovForm(f => ({ ...f, importe: e.target.value }))} className="input" required placeholder="0.00" />
-              </div>
-              <div>
-                <label className="label">Método de pago</label>
-                <select value={movForm.metodo_pago} onChange={e => setMovForm(f => ({ ...f, metodo_pago: e.target.value }))} className="input">
-                  {METODOS.map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 pt-1">
-              <button type="button" onClick={() => setShowMovimiento(false)} className="btn-ghost">Cancelar</button>
-              <button type="submit" disabled={saving} className="btn-primary">{saving ? 'Guardando...' : 'Añadir'}</button>
-            </div>
-          </form>
+          </div>
+
+          <QuickAmountPad
+            title={activeField === 'factusol' ? 'Sumar rapido a Factusol' : 'Sumar rapido a efectivo tarde'}
+            onAdd={applyQuickAmount}
+            onReset={resetActiveField}
+          />
+
+          <div className={`rounded-2xl border px-4 py-4 ${tardeCuadra ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
+            <p className={`text-sm ${tardeCuadra ? 'text-green-700' : 'text-red-700'}`}>Resultado final</p>
+            <p className={`mt-2 text-3xl font-bold ${tardeCuadra ? 'text-green-700' : 'text-red-700'}`}>
+              {descuadreTarde > 0 ? '+' : ''}{formatMoney(descuadreTarde)}
+            </p>
+          </div>
+
+          <div className="sticky bottom-3 z-10 flex justify-end rounded-2xl border border-slate-200 bg-white/95 p-3 backdrop-blur">
+            <button onClick={guardarTarde} disabled={saving === 'guardar-tarde'} className="btn-primary inline-flex items-center gap-2 disabled:opacity-50">
+              <Lock size={15} /> {saving === 'guardar-tarde' ? 'Guardando...' : 'Guardar tarde'}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {showFotoCaja ? (
+        <Modal title="Leer caja desde foto" onClose={() => setShowFotoCaja(false)} wide>
+          <PhotoCajaAssistant onApply={applyPhotoToCaja} />
         </Modal>
-      )}
+      ) : null}
     </div>
   );
 }

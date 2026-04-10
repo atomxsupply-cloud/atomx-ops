@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { MessageCircle, Sparkles, X } from 'lucide-react';
 import AssistantPanel from './AssistantPanel';
 import AppReportWidget from './AppReportWidget';
-import { useFloatingPosition } from '../utils/floating';
+import { useFloatingPosition } from '../utils/floating.js';
 
 export default function FloatingAtomChat() {
   const [open, setOpen] = useState(false);
