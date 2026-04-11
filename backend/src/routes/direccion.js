@@ -230,4 +230,63 @@ router.get('/overview', auth, (req, res) => {
   });
 });
 
+router.get('/design-feedback', auth, (req, res) => {
+  const code = String(req.query.code || '').trim();
+  const limit = Math.min(Math.max(parseInt(req.query.limit || '50', 10), 1), 200);
+
+  if (code) {
+    const item = db.prepare(`
+      SELECT *
+      FROM design_feedback
+      WHERE reward_code = ?
+      LIMIT 1
+    `).get(code);
+
+    return res.json({
+      code,
+      valid: Boolean(item && item.reward_status === 'valid'),
+      item: item || null,
+    });
+  }
+
+  const items = db.prepare(`
+    SELECT id, autor, feedback, selected_brand, skin_tone, estilo_detectado, reward_code, reward_amount, reward_status, created_at
+    FROM design_feedback
+    ORDER BY id DESC
+    LIMIT ?
+  `).all(limit);
+
+  res.json({ total: items.length, items });
+});
+
+router.patch('/design-feedback/:id/redeem', auth, (req, res) => {
+  const id = Number(req.params.id || 0);
+  if (!id) return res.status(400).json({ error: 'Id invalido' });
+
+  const current = db.prepare(`
+    SELECT id, reward_code, reward_status
+    FROM design_feedback
+    WHERE id = ?
+    LIMIT 1
+  `).get(id);
+
+  if (!current) return res.status(404).json({ error: 'Feedback no encontrado' });
+
+  const nextStatus = current.reward_status === 'used' ? 'valid' : 'used';
+  db.prepare(`
+    UPDATE design_feedback
+    SET reward_status = ?
+    WHERE id = ?
+  `).run(nextStatus, id);
+
+  const updated = db.prepare(`
+    SELECT id, autor, feedback, selected_brand, skin_tone, estilo_detectado, reward_code, reward_amount, reward_status, created_at
+    FROM design_feedback
+    WHERE id = ?
+    LIMIT 1
+  `).get(id);
+
+  res.json({ ok: true, item: updated });
+});
+
 module.exports = router;

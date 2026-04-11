@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../api/client';
-import { Camera, Package, Plus, Search, X, Zap, UserRound, Clock3 } from 'lucide-react';
+import { Camera, Package, Plus, Search, X, Zap, UserRound, Clock3, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import Modal from '../components/Modal';
 import PhotoOrderAssistant from '../components/PhotoOrderAssistant';
+import QuickMaterialsPanel from '../components/QuickMaterialsPanel';
 import ChipSelect from '../components/ui/ChipSelect';
 import NumberStepper from '../components/ui/NumberStepper';
 
@@ -141,6 +142,7 @@ function QuickInfo({ icon: Icon, label, value }) {
 }
 
 export default function Pedidos() {
+  const swipeStateRef = useRef({ startX: 0, startY: 0, lock: null });
   const [searchParams] = useSearchParams();
   const selectedPedidoIdFromUrl = Number(searchParams.get('id') || 0);
   const [pedidos, setPedidos] = useState([]);
@@ -160,6 +162,13 @@ export default function Pedidos() {
   const [clienteMatches, setClienteMatches] = useState([]);
   const [clienteLoading, setClienteLoading] = useState(false);
   const [showExtraFields, setShowExtraFields] = useState(false);
+  const [clienteSuggestionsOpen, setClienteSuggestionsOpen] = useState(false);
+  const [showProductSection, setShowProductSection] = useState(true);
+  const [showMaterialsSection, setShowMaterialsSection] = useState(false);
+  const [showDeliverySection, setShowDeliverySection] = useState(true);
+  const [swipePedidoId, setSwipePedidoId] = useState(null);
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const [deletingPedidoId, setDeletingPedidoId] = useState(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -192,7 +201,7 @@ export default function Pedidos() {
     if (!showForm) return;
     const nombre = String(form.cliente_nombre || '').trim();
 
-    if (nombre.length < 1) {
+    if (!clienteSuggestionsOpen || nombre.length < 1) {
       setClienteMatches([]);
       return;
     }
@@ -206,14 +215,7 @@ export default function Pedidos() {
     }, 140);
 
     return () => clearTimeout(timer);
-  }, [form.cliente_nombre, showForm]);
-
-  const zoneCounts = useMemo(() => (
-    ZONAS_REPARTO.map((nombre) => ({
-      nombre,
-      total: pedidos.filter((pedido) => pedido.zona_reparto === nombre).length,
-    }))
-  ), [pedidos]);
+  }, [form.cliente_nombre, showForm, clienteSuggestionsOpen]);
 
   const trimmedClienteNombre = String(form.cliente_nombre || '').trim();
   const hasExactClienteMatch = clienteMatches.some(
@@ -229,6 +231,10 @@ export default function Pedidos() {
     setBulkItemsText('');
     setClienteMatches([]);
     setShowExtraFields(false);
+    setClienteSuggestionsOpen(false);
+    setShowProductSection(true);
+    setShowMaterialsSection(false);
+    setShowDeliverySection(true);
   }
 
   function addItem() {
@@ -277,6 +283,29 @@ export default function Pedidos() {
     setBulkItemsText('');
   }
 
+  function addCatalogItemToPedido(item) {
+    if (!item?.nombre) return;
+    setForm((current) => {
+      const currentItems = Array.isArray(current.items) ? [...current.items] : [];
+      const existingIndex = currentItems.findIndex(
+        (entry) => normalizeText(entry.producto_nombre) === normalizeText(item.nombre)
+      );
+
+      if (existingIndex >= 0) {
+        currentItems[existingIndex] = {
+          ...currentItems[existingIndex],
+          cantidad: Number(currentItems[existingIndex].cantidad || 1) + 1,
+        };
+      } else if (currentItems.length === 1 && !currentItems[0]?.producto_nombre) {
+        currentItems[0] = { producto_nombre: item.nombre, cantidad: 1 };
+      } else {
+        currentItems.unshift({ producto_nombre: item.nombre, cantidad: 1 });
+      }
+
+      return { ...current, items: currentItems };
+    });
+  }
+
   function applyCliente(cliente) {
     setForm((current) => ({
       ...current,
@@ -289,14 +318,7 @@ export default function Pedidos() {
       zona_reparto: cliente.zona_reparto || inferZone(`${cliente.direccion || ''} ${cliente.cp || ''} ${cliente.poblacion || ''}`),
     }));
     setClienteMatches([]);
-  }
-
-  function loadRecentClientes() {
-    setClienteLoading(true);
-    api.get('/clientes?limit=5')
-      .then((response) => setClienteMatches(response.data.clientes || []))
-      .catch(() => setClienteMatches([]))
-      .finally(() => setClienteLoading(false));
+    setClienteSuggestionsOpen(false);
   }
 
   function keepManualCliente() {
@@ -305,6 +327,7 @@ export default function Pedidos() {
       cliente_nombre: trimmedClienteNombre,
     }));
     setClienteMatches([]);
+    setClienteSuggestionsOpen(false);
   }
 
   async function handleSubmit(event) {
@@ -350,6 +373,73 @@ export default function Pedidos() {
     }
   }
 
+  async function borrarPedido(id) {
+    const pedido = pedidos.find((item) => item.id === id);
+    const ok = window.confirm(`Vas a borrar ${pedido?.numero || 'este pedido'}. Esta accion no se puede deshacer.`);
+    if (!ok) return;
+
+    setDeletingPedidoId(id);
+    try {
+      await api.delete(`/pedidos/${id}`);
+      if (selectedPedido?.id === id) setSelectedPedido(null);
+      setSwipePedidoId(null);
+      setSwipeOffset(0);
+      load();
+    } finally {
+      setDeletingPedidoId(null);
+    }
+  }
+
+  function handleTouchStart(id, event) {
+    const touch = event.touches[0];
+    swipeStateRef.current = {
+      startX: touch?.clientX || 0,
+      startY: touch?.clientY || 0,
+      lock: null,
+    };
+    setSwipePedidoId(id);
+    setSwipeOffset((current) => (swipePedidoId === id ? current : 0));
+  }
+
+  function handleTouchMove(id, event) {
+    if (swipePedidoId !== id) return;
+    const touch = event.touches[0];
+    const deltaX = (touch?.clientX || 0) - swipeStateRef.current.startX;
+    const deltaY = (touch?.clientY || 0) - swipeStateRef.current.startY;
+
+    if (!swipeStateRef.current.lock) {
+      if (Math.abs(deltaX) < 8 && Math.abs(deltaY) < 8) return;
+      swipeStateRef.current.lock = Math.abs(deltaX) > Math.abs(deltaY) ? 'x' : 'y';
+    }
+
+    if (swipeStateRef.current.lock !== 'x') return;
+
+    event.preventDefault();
+
+    const nextOffset = swipeOffset === -96 && deltaX > 0
+      ? Math.min(0, -96 + deltaX)
+      : Math.min(0, deltaX * 0.92);
+
+    setSwipeOffset(Math.max(nextOffset, -96));
+  }
+
+  function handleTouchEnd(id) {
+    if (swipePedidoId !== id) return;
+    if (swipeStateRef.current.lock === 'y') {
+      swipeStateRef.current = { startX: 0, startY: 0, lock: null };
+      return;
+    }
+
+    if (swipeOffset <= -64) {
+      setSwipeOffset(-96);
+    } else {
+      setSwipePedidoId(null);
+      setSwipeOffset(0);
+    }
+
+    swipeStateRef.current = { startX: 0, startY: 0, lock: null };
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -361,7 +451,7 @@ export default function Pedidos() {
           <button onClick={() => setShowFoto(true)} className="btn flex items-center justify-center gap-1.5 border border-slate-200 text-sm text-slate-700 hover:bg-slate-50">
             <Camera size={15} /> Foto a pedido
           </button>
-          <button onClick={() => { resetForm(); setShowForm(true); loadRecentClientes(); }} className="btn-primary flex items-center justify-center gap-2">
+          <button onClick={() => { resetForm(); setShowForm(true); }} className="btn-primary flex items-center justify-center gap-2">
             <Plus size={16} /> Nuevo pedido
           </button>
         </div>
@@ -371,16 +461,6 @@ export default function Pedidos() {
         <div className="relative min-w-48">
           <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar cliente, numero, telefono o producto..." className="input pl-8" />
-        </div>
-
-        <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Zona</p>
-          <ChipSelect
-            value={zona}
-            onChange={setZona}
-            allowEmpty
-            options={ZONAS_REPARTO.map((item) => ({ value: item, label: item.replace('ZONA ', '') }))}
-          />
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -395,20 +475,6 @@ export default function Pedidos() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {zoneCounts.map((item) => (
-          <button
-            key={item.nombre}
-            onClick={() => setZona((current) => (current === item.nombre ? '' : item.nombre))}
-            className={`card text-left transition-all ${zona === item.nombre ? 'border-atomx-200 bg-orange-50/50 ring-2 ring-atomx-500' : ''}`}
-          >
-            <p className="text-xs font-semibold tracking-wide text-slate-500">{item.nombre}</p>
-            <p className="mt-2 text-2xl font-bold text-slate-800">{item.total}</p>
-            <p className="mt-1 text-xs text-slate-400">Pedidos en esta zona</p>
-          </button>
-        ))}
-      </div>
-
       {loading ? (
         <div className="py-8 text-center text-sm text-slate-400">Cargando...</div>
       ) : pedidos.length === 0 ? (
@@ -418,28 +484,52 @@ export default function Pedidos() {
         </div>
       ) : (
         <div className="space-y-2">
+          <p className="px-1 text-[11px] font-medium text-slate-400">Desliza un pedido a la izquierda para borrarlo.</p>
           {pedidos.map((pedido) => (
-            <div
-              key={pedido.id}
-              onClick={() => setSelectedPedido(pedido)}
-              className={`card cursor-pointer transition-all hover:shadow-md ${pedido.urgente ? 'border-l-4 border-l-red-500' : ''}`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold text-slate-800">{pedido.cliente_nombre}</span>
-                    {pedido.urgente ? <span className="badge flex items-center gap-1 bg-red-100 text-red-600"><Zap size={10} />Urgente</span> : null}
-                    <Badge estado={pedido.estado} />
-                    {pedido.zona_reparto ? <span className="badge bg-blue-50 text-blue-700">{pedido.zona_reparto}</span> : null}
+            <div key={pedido.id} className="relative overflow-hidden rounded-2xl">
+              <div className="absolute inset-y-0 right-0 flex items-center justify-end bg-red-500 px-3">
+                <button
+                  type="button"
+                  onClick={() => borrarPedido(pedido.id)}
+                  disabled={deletingPedidoId === pedido.id}
+                  className="flex h-11 items-center gap-2 rounded-xl bg-white px-3 text-sm font-semibold text-red-600 shadow-sm disabled:opacity-60"
+                >
+                  <Trash2 size={15} />
+                  {deletingPedidoId === pedido.id ? 'Borrando...' : 'Borrar'}
+                </button>
+              </div>
+
+              <div
+                onClick={() => {
+                  if (swipePedidoId === pedido.id && swipeOffset === -96) return;
+                  setSelectedPedido(pedido);
+                }}
+                onTouchStart={(event) => handleTouchStart(pedido.id, event)}
+                onTouchMove={(event) => handleTouchMove(pedido.id, event)}
+                onTouchEnd={() => handleTouchEnd(pedido.id)}
+                style={{
+                  transform: `translateX(${swipePedidoId === pedido.id ? swipeOffset : 0}px)`,
+                  touchAction: 'pan-y',
+                }}
+                onTouchCancel={() => handleTouchEnd(pedido.id)}
+                className={`card relative cursor-pointer transition-all duration-150 hover:shadow-md ${pedido.urgente ? 'border-l-4 border-l-red-500' : ''}`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-slate-800">{pedido.cliente_nombre}</span>
+                      {pedido.urgente ? <span className="badge flex items-center gap-1 bg-red-100 text-red-600"><Zap size={10} />Urgente</span> : null}
+                      <Badge estado={pedido.estado} />
+                    </div>
+                    <p className="mt-0.5 text-xs text-slate-400">{pedido.numero} - {pedido.tipo_documento} - {pedido.metodo_envio}</p>
+                    {pedido.items?.length > 0 ? (
+                      <p className="mt-1 truncate text-sm text-slate-600">{pedido.items.map((item) => `${item.cantidad}x ${item.producto_nombre}`).join(', ')}</p>
+                    ) : null}
                   </div>
-                  <p className="mt-0.5 text-xs text-slate-400">{pedido.numero} - {pedido.tipo_documento} - {pedido.metodo_envio}</p>
-                  {pedido.items?.length > 0 ? (
-                    <p className="mt-1 truncate text-sm text-slate-600">{pedido.items.map((item) => `${item.cantidad}x ${item.producto_nombre}`).join(', ')}</p>
-                  ) : null}
-                </div>
-                <div className="flex-shrink-0 text-right">
-                  <p className="text-xs text-slate-400">{pedido.created_at?.substring(0, 10)}</p>
-                  {pedido.responsable_nombre ? <p className="mt-0.5 text-xs text-slate-500">{pedido.responsable_nombre}</p> : null}
+                  <div className="flex-shrink-0 text-right">
+                    <p className="text-xs text-slate-400">{pedido.created_at?.substring(0, 10)}</p>
+                    {pedido.responsable_nombre ? <p className="mt-0.5 text-xs text-slate-500">{pedido.responsable_nombre}</p> : null}
+                  </div>
                 </div>
               </div>
             </div>
@@ -455,7 +545,6 @@ export default function Pedidos() {
               {selectedPedido.urgente ? <span className="badge bg-red-100 text-red-600"><Zap size={10} className="mr-1 inline" />Urgente</span> : null}
               <span className="badge bg-slate-100 text-slate-600">{selectedPedido.tipo_documento}</span>
               <span className="badge bg-slate-100 text-slate-600">{selectedPedido.metodo_envio}</span>
-              {selectedPedido.zona_reparto ? <span className="badge bg-blue-50 text-blue-700">{selectedPedido.zona_reparto}</span> : null}
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-sm">
@@ -523,7 +612,7 @@ export default function Pedidos() {
               <p className="mt-1 text-xs text-slate-500">Cliente, productos y guardar. Lo demas solo si hace falta.</p>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div className="hidden grid-cols-1 gap-3 sm:grid md:grid-cols-3">
               <QuickInfo icon={UserRound} label="Cliente" value={trimmedClienteNombre || 'Sin elegir'} />
               <QuickInfo icon={Package} label="Productos" value={`${form.items.filter((item) => item.producto_nombre).length} lineas · ${productoResumen} uds`} />
               <QuickInfo icon={Clock3} label="Zona" value={form.zona_reparto.replace('ZONA ', '')} />
@@ -535,21 +624,24 @@ export default function Pedidos() {
                 <input
                   value={form.cliente_nombre}
                   autoFocus
-                  onFocus={() => {
-                    if (String(form.cliente_nombre || '').trim().length < 2) loadRecentClientes();
-                  }}
+                  onBlur={() => setTimeout(() => setClienteSuggestionsOpen(false), 120)}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' && clienteMatches.length > 0) {
                       event.preventDefault();
                       applyCliente(clienteMatches[0]);
                     }
                   }}
-                  onChange={(event) => setForm((current) => ({ ...current, cliente_nombre: event.target.value }))}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setForm((current) => ({ ...current, cliente_nombre: value }));
+                    setClienteSuggestionsOpen(value.trim().length >= 1);
+                  }}
                   className="input h-14 text-lg font-semibold"
                   required
                   placeholder="Nombre y apellidos"
                 />
 
+                {clienteSuggestionsOpen && (trimmedClienteNombre.length >= 1 || clienteLoading || clienteMatches.length > 0) ? (
                 <div className="mt-2 space-y-2 rounded-2xl border border-slate-200 bg-slate-50 p-2">
                   {clienteLoading ? <p className="px-2 py-1 text-xs text-slate-400">Buscando clientes...</p> : null}
 
@@ -557,6 +649,7 @@ export default function Pedidos() {
                     <button
                       key={`${cliente.id}-${cliente.nombre}`}
                       type="button"
+                      onMouseDown={(event) => event.preventDefault()}
                       onClick={() => applyCliente(cliente)}
                       className="flex w-full items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 text-left transition-colors hover:border-atomx-200 hover:bg-orange-50"
                     >
@@ -575,6 +668,7 @@ export default function Pedidos() {
                   {trimmedClienteNombre.length >= 1 && !hasExactClienteMatch ? (
                     <button
                       type="button"
+                      onMouseDown={(event) => event.preventDefault()}
                       onClick={keepManualCliente}
                       className="flex w-full items-center justify-between gap-3 rounded-xl border border-dashed border-atomx-300 bg-orange-50 px-3 py-3 text-left transition-colors hover:bg-orange-100"
                     >
@@ -590,6 +684,7 @@ export default function Pedidos() {
                     <p className="px-2 py-1 text-xs text-slate-400">Desde la primera letra te saco hasta 5 coincidencias. Si no existe, lo creas solo con el nombre.</p>
                   ) : null}
                 </div>
+                ) : null}
               </div>
 
               <div>
@@ -613,98 +708,149 @@ export default function Pedidos() {
               </div>
             </div>
 
-            <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <div>
-                <label className="label">Plantillas rapidas</label>
-                <div className="flex flex-wrap gap-2">
-                  {QUICK_PRODUCT_TEMPLATES.map((template) => (
-                    <button
-                      key={template.id}
-                      type="button"
-                      onClick={() => applyTemplate(template)}
-                      className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-atomx-300 hover:bg-orange-50"
-                    >
-                      {template.name}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={clearItems}
-                    className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-                  >
-                    Limpiar productos
-                  </button>
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+              <button
+                type="button"
+                onClick={() => setShowProductSection((current) => !current)}
+                className="flex w-full items-center justify-between px-4 py-3 text-left"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">Productos</p>
+                  <p className="text-xs text-slate-500">Plantillas, pegado rapido y lineas del pedido.</p>
                 </div>
-              </div>
+                {showProductSection ? <ChevronUp size={18} className="text-slate-500" /> : <ChevronDown size={18} className="text-slate-500" />}
+              </button>
 
-              <div>
-                <label className="label">Meter productos de golpe</label>
-                <textarea
-                  value={bulkItemsText}
-                  onChange={(event) => setBulkItemsText(event.target.value)}
-                  className="input h-32 resize-none bg-white"
-                  placeholder={`Ejemplo:\n2 DYNAMIC BLACK 10\n1003 RL EMALLA\n3 CARTUCHOS 9RL KWADRON`}
-                />
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-xs text-slate-500">
-                    {bulkItemsPreview.length > 0
-                      ? `${bulkItemsPreview.length} productos detectados`
-                      : 'Una linea por producto. Si empiezas por un numero, lo tomo como cantidad.'}
-                  </p>
-                  <button type="button" onClick={applyBulkItems} disabled={!bulkItemsPreview.length} className="btn border border-slate-200 text-slate-700 disabled:opacity-50">
-                    Usar listado
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="label">Productos</label>
-                <div className="space-y-2">
-                  {form.items.map((item, index) => (
-                    <div key={index} className="flex flex-col gap-2 sm:flex-row">
-                      <input value={item.producto_nombre} onChange={(event) => updateItem(index, 'producto_nombre', event.target.value)} className="input h-12 flex-1 bg-white text-base" placeholder="Nombre del producto" />
-                      <div className="flex items-center gap-2">
-                        <NumberStepper value={item.cantidad} min={1} onChange={(value) => updateItem(index, 'cantidad', value)} />
-                        <button type="button" onClick={() => removeItem(index)} className="btn flex h-10 w-10 items-center justify-center border border-slate-200 text-slate-600 hover:border-red-200 hover:text-red-600">
-                          <X size={16} />
+              {showProductSection ? (
+                <div className="space-y-4 border-t border-slate-200 px-4 py-4">
+                  <div>
+                    <label className="label">Plantillas rapidas</label>
+                    <div className="flex flex-wrap gap-2">
+                      {QUICK_PRODUCT_TEMPLATES.map((template) => (
+                        <button
+                          key={template.id}
+                          type="button"
+                          onClick={() => applyTemplate(template)}
+                          className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-atomx-300 hover:bg-orange-50"
+                        >
+                          {template.name}
                         </button>
-                      </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={clearItems}
+                        className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                      >
+                        Limpiar productos
+                      </button>
                     </div>
-                  ))}
+                  </div>
+
+                  <div>
+                    <label className="label">Meter productos de golpe</label>
+                    <textarea
+                      value={bulkItemsText}
+                      onChange={(event) => setBulkItemsText(event.target.value)}
+                      className="input h-28 resize-none bg-white"
+                      placeholder={`Ejemplo:\n2 DYNAMIC BLACK 10\n1003 RL EMALLA\n3 CARTUCHOS 9RL KWADRON`}
+                    />
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs text-slate-500">
+                        {bulkItemsPreview.length > 0
+                          ? `${bulkItemsPreview.length} productos detectados`
+                          : 'Una linea por producto. Si empiezas por un numero, lo tomo como cantidad.'}
+                      </p>
+                      <button type="button" onClick={applyBulkItems} disabled={!bulkItemsPreview.length} className="btn border border-slate-200 text-slate-700 disabled:opacity-50">
+                        Usar listado
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="label">Productos</label>
+                    <div className="space-y-2">
+                      {form.items.map((item, index) => (
+                        <div key={index} className="rounded-2xl border border-slate-200 bg-white p-3">
+                          <input
+                            value={item.producto_nombre}
+                            onChange={(event) => updateItem(index, 'producto_nombre', event.target.value)}
+                            className="input h-12 bg-slate-50 text-base"
+                            placeholder="Nombre del producto"
+                          />
+                          <div className="mt-3 flex items-center justify-between gap-3">
+                            <NumberStepper value={item.cantidad} min={1} onChange={(value) => updateItem(index, 'cantidad', value)} />
+                            <button type="button" onClick={() => removeItem(index)} className="btn flex h-10 w-10 items-center justify-center border border-slate-200 text-slate-600 hover:border-red-200 hover:text-red-600">
+                              <X size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <button type="button" onClick={addItem} className="btn-ghost mt-2 flex items-center gap-1 text-xs"><Plus size={14} /> Anadir producto</button>
+                  </div>
                 </div>
-                <button type="button" onClick={addItem} className="btn-ghost mt-2 flex items-center gap-1 text-xs"><Plus size={14} /> Anadir producto</button>
-              </div>
+              ) : null}
             </div>
 
-            <div className="space-y-3">
-              <div>
-                <label className="label">Zona reparto</label>
-                <ChipSelect
-                  value={form.zona_reparto}
-                  onChange={(value) => setForm((current) => ({ ...current, zona_reparto: value }))}
-                  options={ZONAS_REPARTO.map((item) => ({ value: item, label: item.replace('ZONA ', '') }))}
-                />
-              </div>
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+              <button
+                type="button"
+                onClick={() => setShowMaterialsSection((current) => !current)}
+                className="flex w-full items-center justify-between px-4 py-3 text-left"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">Materiales rapidos</p>
+                  <p className="text-xs text-slate-500">Buscar por familia, stock y anadir al pedido sin salir.</p>
+                </div>
+                {showMaterialsSection ? <ChevronUp size={18} className="text-slate-500" /> : <ChevronDown size={18} className="text-slate-500" />}
+              </button>
 
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowExtraFields((current) => !current)}
-                  className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
-                >
-                  {showExtraFields ? 'Ocultar extras' : 'Mostrar extras'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setForm((current) => ({ ...current, urgente: !current.urgente }))}
-                  className={`rounded-xl border px-3 py-2 text-sm font-medium ${form.urgente ? 'border-red-500 bg-red-500 text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-                >
-                  <span className="inline-flex items-center gap-1"><Zap size={14} /> Urgente</span>
-                </button>
-              </div>
+              {showMaterialsSection ? (
+                <div className="border-t border-slate-200 px-4 py-4">
+                  <QuickMaterialsPanel onAddToPedido={addCatalogItemToPedido} compact />
+                </div>
+              ) : null}
             </div>
 
-            {showExtraFields ? (
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+              <button
+                type="button"
+                onClick={() => setShowDeliverySection((current) => !current)}
+                className="flex w-full items-center justify-between px-4 py-3 text-left"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">Entrega y extras</p>
+                  <p className="text-xs text-slate-500">Urgencia, responsable y datos que no hacen falta siempre.</p>
+                </div>
+                {showDeliverySection ? <ChevronUp size={18} className="text-slate-500" /> : <ChevronDown size={18} className="text-slate-500" />}
+              </button>
+
+              {showDeliverySection ? (
+                <div className="space-y-3 border-t border-slate-200 px-4 py-4">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowExtraFields((current) => !current)}
+                      className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                    >
+                      {showExtraFields ? 'Ocultar extras' : 'Mostrar extras'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm((current) => ({ ...current, urgente: !current.urgente }))}
+                      className={`rounded-xl border px-3 py-2 text-sm font-medium ${form.urgente ? 'border-red-500 bg-red-500 text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                    >
+                      <span className="inline-flex items-center gap-1"><Zap size={14} /> Urgente</span>
+                    </button>
+                    <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500">
+                      Zona automatica: {form.zona_reparto.replace('ZONA ', '')}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            {showDeliverySection && showExtraFields ? (
               <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div>

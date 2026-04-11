@@ -319,6 +319,23 @@ function init() {
       total_active_products INTEGER DEFAULT 0,
       updated_at TEXT DEFAULT (datetime('now','localtime'))
     );
+
+    CREATE TABLE IF NOT EXISTS design_feedback (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tienda TEXT NOT NULL DEFAULT 'murcia',
+      autor TEXT DEFAULT 'anonimo',
+      feedback TEXT NOT NULL,
+      selected_brand TEXT,
+      skin_tone TEXT,
+      estilo_detectado TEXT,
+      analysis_summary TEXT,
+      detected_colors_json TEXT,
+      recommended_inks_json TEXT,
+      reward_code TEXT,
+      reward_amount REAL DEFAULT 0,
+      reward_status TEXT DEFAULT 'none',
+      created_at TEXT DEFAULT (datetime('now','localtime'))
+    );
   `);
 
   // Migraciones
@@ -377,6 +394,24 @@ function init() {
   try { db.exec(`ALTER TABLE salidas_dinero ADD COLUMN tienda TEXT NOT NULL DEFAULT 'murcia'`); } catch {}
   try { db.exec(`ALTER TABLE checklist_registros ADD COLUMN tienda TEXT NOT NULL DEFAULT 'murcia'`); } catch {}
   try { db.exec(`ALTER TABLE rutas_comerciales ADD COLUMN tienda TEXT NOT NULL DEFAULT 'murcia'`); } catch {}
+  try { db.exec(`ALTER TABLE design_feedback ADD COLUMN tienda TEXT NOT NULL DEFAULT 'murcia'`); } catch {}
+  try { db.exec(`ALTER TABLE design_feedback ADD COLUMN autor TEXT DEFAULT 'anonimo'`); } catch {}
+  try { db.exec(`ALTER TABLE design_feedback ADD COLUMN selected_brand TEXT`); } catch {}
+  try { db.exec(`ALTER TABLE design_feedback ADD COLUMN skin_tone TEXT`); } catch {}
+  try { db.exec(`ALTER TABLE design_feedback ADD COLUMN estilo_detectado TEXT`); } catch {}
+  try { db.exec(`ALTER TABLE design_feedback ADD COLUMN analysis_summary TEXT`); } catch {}
+  try { db.exec(`ALTER TABLE design_feedback ADD COLUMN detected_colors_json TEXT`); } catch {}
+  try { db.exec(`ALTER TABLE design_feedback ADD COLUMN recommended_inks_json TEXT`); } catch {}
+  try { db.exec(`ALTER TABLE design_feedback ADD COLUMN reward_code TEXT`); } catch {}
+  try { db.exec(`ALTER TABLE design_feedback ADD COLUMN reward_amount REAL DEFAULT 0`); } catch {}
+  try { db.exec(`ALTER TABLE design_feedback ADD COLUMN reward_status TEXT DEFAULT 'none'`); } catch {}
+  try {
+    db.exec(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_design_feedback_reward_code
+      ON design_feedback(reward_code)
+      WHERE reward_code IS NOT NULL AND reward_code <> ''
+    `);
+  } catch {}
 
   try {
     db.exec(`ALTER TABLE notas ADD COLUMN categoria TEXT DEFAULT 'general'`);

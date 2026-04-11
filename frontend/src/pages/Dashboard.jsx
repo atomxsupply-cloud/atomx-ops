@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/client';
-import { AlertTriangle, CheckSquare, Clock, Coffee, DollarSign, Package, Pin, TimerReset, Zap } from 'lucide-react';
+import { AlertTriangle, CheckSquare, Clock, Coffee, DollarSign, LogOut, Package, Pin, TimerReset, Zap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { canAccessSection } from '../utils/permissions';
 
@@ -78,7 +78,8 @@ function PrestashopStatus({ prestashop }) {
 export default function Dashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     api.get('/dashboard').then((r) => setData(r.data)).finally(() => setLoading(false));
@@ -93,6 +94,11 @@ export default function Dashboard() {
   const tareasPendingLink = isJuanfran ? '/tareas?vista=equipo&estado=pendiente' : '/tareas';
   const tareasLateLink = isJuanfran ? '/tareas?vista=equipo&estado=atrasadas' : '/tareas';
 
+  function handleLogout() {
+    logout();
+    navigate('/login');
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -106,6 +112,42 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <div className="grid grid-cols-2 gap-3 lg:hidden">
+        {canSeePedidos ? (
+          <Link to="/pedidos?estado=pendiente" className="card">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Pedidos</p>
+            <p className="mt-2 text-2xl font-bold text-slate-800">{data?.pedidos?.pendientes ?? 0}</p>
+            <p className="mt-1 text-xs text-slate-500">Pendientes ahora</p>
+          </Link>
+        ) : null}
+        <Link to={tareasPendingLink} className="card">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Equipo</p>
+          <p className="mt-2 text-2xl font-bold text-slate-800">{data?.tareas?.hoy ?? 0}</p>
+          <p className="mt-1 text-xs text-slate-500">Tareas pendientes</p>
+        </Link>
+        <Link to="/caja" className="card">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Caja</p>
+          <p className="mt-2 text-lg font-bold text-slate-800">{data?.cajaHoy ? formatMoney(data.cajaHoy.saldo) : 'Sin abrir'}</p>
+          <p className="mt-1 text-xs text-slate-500">Saldo o apertura</p>
+        </Link>
+        <Link to="/buscador" className="card">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Buscador PRO</p>
+          <p className="mt-2 text-lg font-bold text-slate-800">Abrir</p>
+          <p className="mt-1 text-xs text-slate-500">Productos y app</p>
+        </Link>
+      </div>
+
+      <div className="lg:hidden">
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm"
+        >
+          <LogOut size={16} />
+          Cerrar sesion
+        </button>
+      </div>
+
       {data?.pedidos?.urgentes > 0 && (
         <Link
           to="/pedidos?urgente=1"
@@ -117,18 +159,18 @@ export default function Dashboard() {
       )}
 
       {canSeePedidos ? (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="hidden lg:grid grid-cols-2 gap-3">
           <StatCard label="Pedidos ATOM X Murcia" value={data?.pedidos?.pendientes} icon={Package} color="bg-yellow-500" to="/pedidos?estado=pendiente" />
           <StatCard label="Incidencias abiertas" value={data?.incidenciasAbiertas} icon={AlertTriangle} color="bg-red-600" />
         </div>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="hidden lg:grid grid-cols-2 gap-3">
         <StatCard label="Tareas pendientes" value={data?.tareas?.hoy} icon={CheckSquare} color="bg-atomx-500" to={tareasPendingLink} />
         <StatCard label="Tareas atrasadas" value={data?.tareas?.atrasadas} icon={Clock} color="bg-red-500" to={tareasLateLink} />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="hidden lg:grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="card">
           <div className="mb-3 flex items-center gap-2">
             <TimerReset size={16} className="text-emerald-600" />

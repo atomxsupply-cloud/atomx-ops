@@ -11,15 +11,13 @@ import {
 const nav = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard', end: true, section: 'dashboard' },
   { to: '/direccion', icon: BriefcaseBusiness, label: 'Direccion', section: 'direccion' },
-  { to: '/buscador', icon: Search, label: 'Buscador', section: 'buscador' },
+  { to: '/buscador', icon: Search, label: 'Buscador PRO', section: 'buscador' },
   { to: '/design-ia', icon: Palette, label: 'Design IA', section: 'designia' },
   { to: '/clientes', icon: Users, label: 'Clientes', section: 'clientes' },
   { to: '/factusol', icon: Cloud, label: 'Factusol', section: 'factusol' },
   { to: '/pedidos', icon: Package, label: 'Pedidos', section: 'pedidos' },
-  { to: '/tareas', icon: CheckSquare, label: 'Tareas', section: 'tareas' },
+  { to: '/tareas', icon: CheckSquare, label: 'Equipo', section: 'tareas' },
   { to: '/rutas', icon: Route, label: 'Rutas', section: 'rutas' },
-  { to: '/notas', icon: StickyNote, label: 'Notas', section: 'notas' },
-  { to: '/stock', icon: Archive, label: 'Stock', section: 'stock' },
   { to: '/prestashop', icon: Store, label: 'PrestaShop', section: 'prestashop' },
   { to: '/caja', icon: DollarSign, label: 'Caja', section: 'caja' },
   { to: '/salidas', icon: WalletCards, label: 'Salidas', section: 'salidas' },
@@ -50,7 +48,7 @@ export default function Sidebar({ onClose }) {
   const visibleNav = nav.filter((item) => canAccessSection(user, item.section));
 
   return (
-    <div className="w-64 h-full bg-slate-950 flex flex-col">
+    <div className="flex h-full w-64 flex-col bg-slate-950">
       {/* Logo */}
       <div className="flex items-center justify-between px-5 py-5 border-b border-slate-700">
         <div className="flex items-center gap-2">
@@ -63,7 +61,7 @@ export default function Sidebar({ onClose }) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4 space-y-1">
         {visibleNav.map(({ to, icon: Icon, label, end }) => (
           <NavLink
             key={to}
@@ -108,7 +106,7 @@ export default function Sidebar({ onClose }) {
       )}
 
       {/* User */}
-      <div className="px-3 py-4 border-t border-slate-700">
+      <div className="shrink-0 border-t border-slate-700 px-3 py-4 bg-slate-950">
         <div className="flex items-center gap-3 px-3 py-2 rounded-lg">
           <div className="w-8 h-8 rounded-full bg-atomx-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
             {user?.nombre?.[0]?.toUpperCase()}
@@ -119,10 +117,14 @@ export default function Sidebar({ onClose }) {
               {user?.rol}
             </span>
           </div>
-          <button onClick={handleLogout} className="text-slate-400 hover:text-red-400 transition-colors">
-            <LogOut size={16} />
-          </button>
         </div>
+        <button
+          onClick={handleLogout}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-700 px-3 py-2.5 text-sm font-semibold text-slate-200 transition-colors hover:border-red-400 hover:text-red-400"
+        >
+          <LogOut size={16} />
+          Cerrar sesion
+        </button>
       </div>
     </div>
   );

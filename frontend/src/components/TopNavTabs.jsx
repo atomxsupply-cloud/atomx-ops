@@ -25,7 +25,7 @@ export default function TopNavTabs() {
   const { user } = useAuth();
   const visibleItems = items.filter((item) => canAccessSection(user, item.section));
   return (
-    <div className="overflow-x-auto pb-1">
+    <div className="hidden overflow-x-auto pb-1 lg:block">
       <div className="flex gap-2 min-w-max">
         {visibleItems.map(({ to, label, icon: Icon, end }) => (
           <NavLink

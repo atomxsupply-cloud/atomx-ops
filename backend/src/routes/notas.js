@@ -7,6 +7,7 @@ const router = express.Router();
 const NOTE_PRIORIDADES = new Set(['alta', 'normal', 'baja']);
 const NOTE_CATEGORIAS = new Set(['general', 'pedidos', 'stock', 'clientes', 'web', 'direccion', 'equipo']);
 const NOTE_ESTADOS = new Set(['abierta', 'hecha']);
+const SHARED_MATERIALS_TOKEN = '[ATOMX_MATERIALES_COMPARTIDOS]';
 
 function noteRecipients(tienda, excludeUserId) {
   return db.prepare(`
@@ -14,6 +15,98 @@ function noteRecipients(tienda, excludeUserId) {
     FROM users
     WHERE activo = 1 AND tienda = ? AND id != ?
   `).all(tienda, excludeUserId);
+}
+
+function normalizeSharedItems(items = []) {
+  return items
+    .map((item) => ({
+      nombre: String(item.nombre || '').trim(),
+      referencia: String(item.referencia || '').trim(),
+      familia: String(item.familia || 'otros_materiales').trim() || 'otros_materiales',
+      cantidad: Math.max(Number(item.cantidad || 1), 1),
+    }))
+    .filter((item) => item.nombre)
+    .sort((a, b) => {
+      if (a.familia !== b.familia) return a.familia.localeCompare(b.familia, 'es');
+      if (b.cantidad !== a.cantidad) return b.cantidad - a.cantidad;
+      return a.nombre.localeCompare(b.nombre, 'es');
+    });
+}
+
+function familyLabel(value = '') {
+  return String(value || 'otros_materiales')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatSharedMaterialsContent(items = []) {
+  const normalizedItems = normalizeSharedItems(items);
+  const lines = [
+    SHARED_MATERIALS_TOKEN,
+    'Lista compartida de materiales',
+    '',
+  ];
+
+  if (!normalizedItems.length) {
+    lines.push('No hay materiales apuntados ahora mismo.');
+  } else {
+    let currentFamily = '';
+    normalizedItems.forEach((item) => {
+      if (item.familia !== currentFamily) {
+        currentFamily = item.familia;
+        if (lines[lines.length - 1] !== '') lines.push('');
+        lines.push(`## ${familyLabel(currentFamily)}`);
+      }
+      lines.push(`- ${item.cantidad}x ${item.nombre}${item.referencia ? ` | Ref ${item.referencia}` : ''}`);
+    });
+  }
+
+  return lines.join('\n');
+}
+
+function parseSharedMaterialsContent(content = '') {
+  const lines = String(content || '').split('\n');
+  return lines
+    .map((line) => line.trim())
+    .reduce((acc, line, index) => {
+      if (line.startsWith('## ')) {
+        acc.currentFamily = line.replace(/^##\s+/, '').trim();
+        return acc;
+      }
+      if (!line.startsWith('- ')) return acc;
+      const match = line.match(/^- (\d+)x (.+?)(?: \| Ref (.+))?$/);
+      if (!match) return acc;
+      acc.items.push({
+        id: `${index}-${match[2]}`,
+        cantidad: Number(match[1] || 1),
+        nombre: String(match[2] || '').trim(),
+        referencia: String(match[3] || '').trim(),
+        familia: acc.currentFamily
+          ? normalizeSharedFamilyKey(acc.currentFamily)
+          : 'otros_materiales',
+      });
+      return acc;
+    }, { items: [], currentFamily: '' }).items;
+}
+
+function normalizeSharedFamilyKey(label = '') {
+  return String(label || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+function getSharedMaterialsNote(tienda) {
+  return db.prepare(`
+    SELECT n.*, u.nombre as autor
+    FROM notas n
+    LEFT JOIN users u ON n.autor_id = u.id
+    WHERE n.tienda = ? AND n.contenido LIKE ?
+    ORDER BY n.updated_at DESC, n.id DESC
+    LIMIT 1
+  `).get(tienda, `${SHARED_MATERIALS_TOKEN}%`);
 }
 
 router.get('/', auth, (req, res) => {
@@ -52,6 +145,61 @@ router.get('/', auth, (req, res) => {
   sql += ` ORDER BY n.pinned DESC, CASE n.prioridad WHEN 'alta' THEN 0 WHEN 'normal' THEN 1 ELSE 2 END, n.created_at DESC LIMIT 80`;
   const notas = db.prepare(sql).all(...params);
   res.json(notas);
+});
+
+router.get('/materiales-compartidos', auth, (req, res) => {
+  const tienda = getTienda(req.user);
+  const note = getSharedMaterialsNote(tienda);
+  res.json({
+    note_id: note?.id || null,
+    items: note ? parseSharedMaterialsContent(note.contenido) : [],
+    updated_at: note?.updated_at || note?.created_at || null,
+    autor: note?.autor || null,
+  });
+});
+
+router.post('/materiales-compartidos', auth, (req, res) => {
+  const tienda = getTienda(req.user);
+  const items = Array.isArray(req.body.items) ? req.body.items : [];
+  const normalizedItems = normalizeSharedItems(items);
+
+  const contenido = formatSharedMaterialsContent(normalizedItems);
+  const existing = getSharedMaterialsNote(tienda);
+
+  if (existing) {
+    db.prepare(`
+      UPDATE notas
+      SET contenido = ?, categoria = 'stock', prioridad = 'normal', estado = 'abierta', pinned = 1,
+          updated_at = datetime('now','localtime')
+      WHERE id = ? AND tienda = ?
+    `).run(contenido, existing.id, tienda);
+    return res.json({
+      ok: true,
+      note_id: existing.id,
+      items: normalizedItems,
+    });
+  }
+
+  const result = db.prepare(`
+    INSERT INTO notas (tienda, contenido, autor_id, categoria, prioridad, estado, pinned, updated_at)
+    VALUES (?, ?, ?, 'stock', 'normal', 'abierta', 1, datetime('now','localtime'))
+  `).run(tienda, contenido, req.user.id);
+
+  noteRecipients(tienda, req.user.id).forEach((user) => {
+    notify(
+      user.id,
+      'nota',
+      'Lista compartida de materiales',
+      `${req.user.nombre} ha actualizado la lista compartida de materiales.`,
+      '/notas'
+    );
+  });
+
+  res.status(201).json({
+    ok: true,
+    note_id: result.lastInsertRowid,
+    items: normalizedItems,
+  });
 });
 
 router.post('/', auth, (req, res) => {

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, Sparkles } from 'lucide-react';
 import api from '../api/client';
+import QuickMaterialsPanel from '../components/QuickMaterialsPanel';
 
 function formatMoney(value) {
   const amount = Number(value || 0);
@@ -99,6 +100,8 @@ export default function Stock() {
           <p className="mt-4 text-sm text-slate-600">No he encontrado ese producto ahora mismo en la web.</p>
         ) : null}
       </section>
+
+      <QuickMaterialsPanel />
     </div>
   );
 }

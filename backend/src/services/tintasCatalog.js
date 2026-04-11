@@ -1,7 +1,11 @@
 const { db } = require('../db');
 const { ensureConfig, getProducts } = require('./prestashop');
+const fs = require('fs');
+const path = require('path');
 
 const ATOMX_SEARCH_BASE = 'https://www.atomxsupply.com/busqueda?controller=search&s=';
+const CSV_CATALOG_PATH = path.join(__dirname, '..', '..', '..', 'datos', 'catalogo-web', 'product_2026-04-11_141642.csv');
+const MAIN_INKS_JSON_PATH = path.join(__dirname, '..', '..', '..', 'datos', 'catalogo-web', 'catalogo_tintas_principales.json');
 
 function normalizeText(value = '') {
   return String(value || '')
@@ -35,6 +39,15 @@ function detectInkBrand(normalizedName = '') {
   return null;
 }
 
+function detectInkBrandFromCategory(rawCategory = '', rawName = '') {
+  const category = normalizeText(rawCategory);
+  if (category === 'eternal ink') return 'ETERNAL';
+  if (category === 'vice colors') return 'VICE_COLORS';
+  if (category === 'radiant colors') return 'RADIANT';
+  if (category === 'dynamic') return 'DYNAMIC';
+  return detectInkBrand(normalizeText(rawName));
+}
+
 function isWhiteInk(normalizedName = '') {
   const n = normalizedName;
   // Blancos que quieres: super white (radiant), nuclear white, blancos de dynamic/vice/eternal
@@ -60,7 +73,100 @@ function classifyInk(productName = '') {
   return 'color';
 }
 
-function looksLikeInk(productName = '') {
+function parseCsvLine(line = '') {
+  const values = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const next = line[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (char === ';' && !inQuotes) {
+      values.push(current);
+      current = '';
+      continue;
+    }
+
+    current += char;
+  }
+
+  values.push(current);
+  return values.map((value) => String(value || '').trim());
+}
+
+function loadCsvCatalogEntries() {
+  if (!fs.existsSync(CSV_CATALOG_PATH)) return [];
+
+  const raw = fs.readFileSync(CSV_CATALOG_PATH, 'utf8');
+  const lines = raw.split(/\r?\n/).filter(Boolean);
+  if (lines.length < 2) return [];
+
+  const headers = parseCsvLine(lines[0]);
+  const idx = Object.fromEntries(headers.map((header, i) => [normalizeText(header), i]));
+  const result = [];
+
+  for (const line of lines.slice(1)) {
+    const cols = parseCsvLine(line);
+    const nombre = cols[idx['nombre']] || '';
+    const referencia = cols[idx['referencia']] || '';
+    const categoriaRaw = cols[idx['categoria']] || cols[idx['categoria a']] || '';
+    const marca = detectInkBrandFromCategory(categoriaRaw, nombre);
+    if (!nombre || !marca) continue;
+    if (!looksLikeInk(nombre, categoriaRaw)) continue;
+
+    result.push({
+      nombre,
+      categoria: classifyInk(nombre),
+      marca,
+      precio: Number(cols[idx['precio imp incl']] || cols[idx['precio imp incl ']] || 0),
+      uso: '',
+      stock: cols[idx['cantidad']] === '' ? null : Number(cols[idx['cantidad']]),
+      activo: String(cols[idx['estado']] || '') !== '0',
+      referencia,
+      link: buildSearchUrl(nombre),
+      source: 'catalogo_csv',
+    });
+  }
+
+  return result;
+}
+
+function loadMainInkJsonEntries() {
+  if (!fs.existsSync(MAIN_INKS_JSON_PATH)) return [];
+
+  try {
+    const parsed = JSON.parse(fs.readFileSync(MAIN_INKS_JSON_PATH, 'utf8'));
+    return Object.entries(parsed || {}).flatMap(([brand, items]) =>
+      (items || []).map((item) => ({
+        nombre: item.nombre || '',
+        categoria: item.tipo_tinta || classifyInk(item.nombre || ''),
+        marca: brand || item.marca || 'OTRA',
+        precio: Number(item.precio || 0),
+        uso: '',
+        stock: item.cantidad == null ? null : Number(item.cantidad),
+        activo: String(item.estado || '') !== '0',
+        referencia: item.referencia || '',
+        link: buildSearchUrl(item.nombre || ''),
+        source: 'catalogo_principal_json',
+      }))
+    ).filter((item) => item.nombre);
+  } catch {
+    return [];
+  }
+}
+
+function looksLikeInk(productName = '', rawCategory = '') {
   const n = normalizeText(productName);
   if (!n) return false;
 
@@ -84,7 +190,7 @@ function looksLikeInk(productName = '') {
   const hardNonInk = ['kit', 'mueble', 'carro', 'mesa'];
   if (hardNonInk.some((token) => n.includes(token))) return false;
 
-  const brand = detectInkBrand(n);
+  const brand = detectInkBrandFromCategory(rawCategory, productName);
   if (!brand) return false;
 
   const categoria = classifyInk(productName);
@@ -100,8 +206,15 @@ function looksLikeInk(productName = '') {
 }
 
 function toEntry(row) {
+  let categoriaRaw = row.categoria || '';
+  if (!categoriaRaw && row.raw_json) {
+    try {
+      const parsed = JSON.parse(row.raw_json);
+      categoriaRaw = parsed.category_name || parsed.category || parsed.categoria || '';
+    } catch {}
+  }
   const normalized = normalizeText(row.nombre || '');
-  const marca = detectInkBrand(normalized);
+  const marca = detectInkBrandFromCategory(categoriaRaw, row.nombre || '') || detectInkBrand(normalized);
   return {
     nombre: row.nombre || '',
     categoria: classifyInk(row.nombre || ''),
@@ -125,10 +238,40 @@ function groupByCategoria(entries = []) {
   }, {});
 }
 
+function countByBrand(entries = []) {
+  return entries.reduce((acc, entry) => {
+    const brand = String(entry?.marca || 'OTRA').toUpperCase();
+    acc[brand] = (acc[brand] || 0) + 1;
+    return acc;
+  }, {});
+}
+
+async function getLiveBrandEntries(searchTerm = '', limit = 120) {
+  const live = await getProducts({ limit, search: searchTerm });
+  return (live || [])
+    .filter((item) => looksLikeInk(item.nombre, item.categoria || ''))
+    .map((item) => ({
+      marca: detectInkBrandFromCategory(item.categoria || '', item.nombre || '') || 'OTRA',
+      nombre: item.nombre || '',
+      categoria: classifyInk(item.nombre || ''),
+      precio: Number(item.precio_con_iva ?? item.precio ?? 0),
+      uso: '',
+      stock: item.stock_actual ?? null,
+      activo: !!item.activo,
+      referencia: item.referencia || '',
+      link: buildSearchUrl(item.nombre || ''),
+      source: 'prestashop_live',
+    }))
+    .filter((item) => item.nombre);
+}
+
 async function getTintasCatalog({ limit = 2500 } = {}) {
+  const mainJsonEntries = loadMainInkJsonEntries();
+  const csvEntries = mainJsonEntries.length ? [] : loadCsvCatalogEntries();
+
   // 1) Preferimos cache DB porque es instantaneo y estable.
   const rows = db.prepare(`
-    SELECT product_id, nombre, referencia, precio_con_iva, activo, stock_actual
+    SELECT product_id, nombre, referencia, precio_con_iva, activo, stock_actual, raw_json
     FROM prestashop_products_cache
     WHERE nombre IS NOT NULL AND TRIM(nombre) <> ''
     ORDER BY last_seen_at DESC
@@ -136,7 +279,7 @@ async function getTintasCatalog({ limit = 2500 } = {}) {
   `).all(Number(limit) || 2500);
 
   const filtered = rows
-    .filter((row) => looksLikeInk(row.nombre))
+    .filter((row) => looksLikeInk(row.nombre, row.categoria || ''))
     .map(toEntry)
     .filter((item) => item.nombre);
 
@@ -146,28 +289,38 @@ async function getTintasCatalog({ limit = 2500 } = {}) {
   if (filtered.length < 25) {
     try {
       ensureConfig();
-      const live = await getProducts({ limit: 2500, search: '' });
-      liveFiltered = (live || [])
-        .filter((item) => looksLikeInk(item.nombre))
-        .map((item) => ({
-          marca: detectInkBrand(normalizeText(item.nombre || '')) || 'OTRA',
-          nombre: item.nombre || '',
-          categoria: classifyInk(item.nombre || ''),
-          precio: Number(item.precio_con_iva ?? item.precio ?? 0),
-          uso: '',
-          stock: item.stock_actual ?? null,
-          activo: !!item.activo,
-          referencia: item.referencia || '',
-          link: buildSearchUrl(item.nombre || ''),
-          source: 'prestashop_live',
-        }))
-        .filter((item) => item.nombre);
+      liveFiltered = await getLiveBrandEntries('', 2500);
     } catch {
       liveFiltered = [];
     }
   }
 
-  const all = [...filtered, ...liveFiltered]
+  // 3) Si alguna marca clave no aparece en cache, intentamos hidratarla en vivo por busqueda.
+  // Esto evita que Design se quede "ciego" con Vice u otras marcas por una cache incompleta.
+  const strategicSearches = [
+    { brand: 'VICE_COLORS', search: 'vice' },
+    { brand: 'RADIANT', search: 'radiant' },
+    { brand: 'DERMAGLO', search: 'dermaglo' },
+    { brand: 'ALLEGORY', search: 'allegory' },
+    { brand: 'HYPE_INK', search: 'hype ink' },
+    { brand: 'DYNAMIC', search: 'dynamic' },
+    { brand: 'ETERNAL', search: 'eternal' },
+  ];
+
+  const cachedBrandCounts = countByBrand([...mainJsonEntries, ...csvEntries, ...filtered]);
+  const missingBrandSearches = strategicSearches.filter(({ brand }) => !cachedBrandCounts[brand]);
+
+  if (missingBrandSearches.length) {
+    try {
+      ensureConfig();
+      for (const item of missingBrandSearches) {
+        const batch = await getLiveBrandEntries(item.search, 180);
+        liveFiltered.push(...batch.filter((entry) => String(entry.marca || '').toUpperCase() === item.brand || (item.brand === 'VICE_COLORS' && String(entry.marca || '').toUpperCase() === 'VICE')));
+      }
+    } catch {}
+  }
+
+  const all = [...mainJsonEntries, ...csvEntries, ...filtered, ...liveFiltered]
     // Dedup por nombre+ref para no duplicar cuando cache y live conviven
     .reduce((acc, item) => {
       const key = `${normalizeText(item.nombre)}|${normalizeText(item.referencia || '')}|${String(item.marca || '')}`;
@@ -189,7 +342,12 @@ async function getTintasCatalog({ limit = 2500 } = {}) {
   return {
     total: all.length,
     categories,
-    sources: { prestashop_cache: rows.length, prestashop_live: liveFiltered.length },
+    sources: {
+      catalogo_principal_json: mainJsonEntries.length,
+      catalogo_csv: csvEntries.length,
+      prestashop_cache: rows.length,
+      prestashop_live: liveFiltered.length,
+    },
   };
 }
 
@@ -199,7 +357,7 @@ async function searchTintasCatalog(query = '', limit = 12) {
 
   // Busqueda rapida solo sobre cache local (sin llamadas a PrestaShop).
   const rows = db.prepare(`
-    SELECT nombre, referencia, precio_con_iva, activo, stock_actual
+    SELECT nombre, referencia, precio_con_iva, activo, stock_actual, raw_json
     FROM prestashop_products_cache
     WHERE nombre IS NOT NULL AND TRIM(nombre) <> ''
     ORDER BY last_seen_at DESC
@@ -207,7 +365,7 @@ async function searchTintasCatalog(query = '', limit = 12) {
   `).all();
 
   const items = rows
-    .filter((row) => looksLikeInk(row.nombre))
+    .filter((row) => looksLikeInk(row.nombre, row.categoria || ''))
     .map((row) => toEntry({ ...row }));
 
   const scored = items

@@ -250,7 +250,56 @@ input:disabled + .toggle-slider { opacity:0.5; cursor:not-allowed; }
 .upload-title { font-size:14px; font-weight:700; margin-bottom:4px; }
 .upload-sub { font-size:11px; color:var(--muted); }
 #file-input { display:none; }
-#preview-img { width:100%; border-radius:14px; display:none; max-height:280px; object-fit:cover; }
+#preview-img {
+  width:100%;
+  border-radius:14px;
+  display:none;
+  height:320px;
+  max-height:320px;
+  object-fit:cover;
+  object-position:center center;
+}
+.preview-overlay {
+  position:absolute;
+  inset:0;
+  display:none;
+  pointer-events:none;
+  border-radius:14px;
+}
+.upload-zone.has-image .preview-overlay { display:block; }
+.preview-marker {
+  position:absolute;
+  width:44px;
+  transform:translate(-50%, -50%);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+}
+.preview-line {
+  width:1px;
+  height:20px;
+  background:rgba(255,255,255,0.9);
+  box-shadow:0 0 6px rgba(255,255,255,0.35);
+}
+.preview-dot {
+  width:18px;
+  height:18px;
+  border-radius:50%;
+  border:2px solid #fff;
+  box-shadow:0 0 0 1px rgba(0,0,0,0.45), 0 6px 12px rgba(0,0,0,0.3);
+}
+.preview-label {
+  background:rgba(10,10,10,0.75);
+  color:#fff;
+  border:1px solid rgba(255,255,255,0.18);
+  border-radius:999px;
+  padding:3px 7px;
+  font-family:'Space Mono',monospace;
+  font-size:8px;
+  letter-spacing:0.5px;
+  white-space:nowrap;
+}
 
 /* ANALYZE BTN */
 .analyze-btn {
@@ -305,11 +354,97 @@ input:disabled + .toggle-slider { opacity:0.5; cursor:not-allowed; }
   border-radius:12px; overflow:hidden;
   border:1px solid var(--border); background:var(--card);
 }
+.color-swatch.target {
+  border-color:rgba(255,77,0,0.35);
+  box-shadow:0 0 0 1px rgba(255,77,0,0.15) inset;
+}
 .swatch-color { height:56px; width:100%; }
 .swatch-info { padding:7px; }
 .swatch-name { font-size:10px; font-weight:700; margin-bottom:2px; }
 .swatch-hex { font-family:'Space Mono',monospace; font-size:8px; color:var(--muted); }
 .swatch-pct { font-family:'Space Mono',monospace; font-size:8px; color:var(--accent); margin-top:1px; }
+
+.color-map {
+  position:relative;
+  height:220px;
+  border-radius:18px;
+  overflow:hidden;
+  border:1px solid var(--border);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.18), rgba(0,0,0,0.3)),
+    linear-gradient(90deg,
+      #ff4d4d 0%,
+      #ff9a3c 8%,
+      #ffd84d 16%,
+      #c8ff4d 24%,
+      #57e36f 34%,
+      #35d6c8 48%,
+      #3b82f6 64%,
+      #7c3aed 78%,
+      #db2777 92%,
+      #ff4d4d 100%);
+  margin-bottom:12px;
+}
+.color-map::after {
+  content:'';
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0.08) 42%, rgba(0,0,0,0.32) 100%);
+  pointer-events:none;
+}
+.color-map-axis {
+  display:flex;
+  justify-content:space-between;
+  font-family:'Space Mono',monospace;
+  font-size:8px;
+  color:var(--dim);
+  letter-spacing:1px;
+  margin-top:4px;
+  margin-bottom:14px;
+}
+.map-dot {
+  position:absolute;
+  width:18px;
+  height:18px;
+  border-radius:999px;
+  border:2px solid rgba(255,255,255,0.9);
+  box-shadow:0 8px 18px rgba(0,0,0,0.35);
+  transform:translate(-50%, -50%);
+  cursor:pointer;
+  z-index:2;
+}
+.map-dot.detected { width:16px; height:16px; }
+.map-dot.target {
+  width:20px;
+  height:20px;
+  border-color:#0a0a0a;
+  box-shadow:0 0 0 2px rgba(255,255,255,0.85), 0 10px 20px rgba(0,0,0,0.3);
+}
+.map-legend {
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-bottom:12px;
+}
+.map-pill {
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid var(--border);
+  background:var(--card);
+  font-size:10px;
+  color:var(--muted);
+  font-family:'Space Mono',monospace;
+  letter-spacing:.5px;
+}
+.map-pill-dot {
+  width:10px;
+  height:10px;
+  border-radius:999px;
+}
 
 /* TINTA CARDS */
 .tinta-card {
@@ -320,7 +455,21 @@ input:disabled + .toggle-slider { opacity:0.5; cursor:not-allowed; }
 .tinta-left { display:flex; gap:12px; align-items:center; }
 .tinta-color-dot { width:34px; height:34px; border-radius:10px; flex-shrink:0; border:2px solid rgba(255,255,255,0.1); }
 .tinta-nombre { font-size:13px; font-weight:700; margin-bottom:2px; }
-.tinta-marca { font-family:'Space Mono',monospace; font-size:9px; color:var(--muted); letter-spacing:1px; text-transform:uppercase; }
+.tinta-marca { font-family:'Space Mono',monospace; font-size:8px; color:var(--muted); letter-spacing:1px; text-transform:uppercase; }
+.tinta-real {
+  font-size:14px;
+  font-weight:800;
+  line-height:1.3;
+  color:#fff;
+}
+.tinta-meta-line {
+  margin-top:5px;
+  font-size:9px;
+  color:var(--muted);
+  font-family:'Space Mono',monospace;
+  letter-spacing:.7px;
+  text-transform:uppercase;
+}
 .tinta-precio { font-size:16px; font-weight:700; color:var(--accent); }
 .tinta-precio-sub { font-size:9px; color:var(--dim); text-align:right; font-family:'Space Mono',monospace; }
 .tinta-tags { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
@@ -342,14 +491,14 @@ input:disabled + .toggle-slider { opacity:0.5; cursor:not-allowed; }
 
 /* RESUMEN */
 .resumen-card {
-  background:var(--accent-dim); border:1px solid var(--accent-soft);
-  border-radius:14px; padding:16px; margin-bottom:16px; margin-top:8px;
+  background:rgba(255,255,255,0.03); border:1px solid var(--border);
+  border-radius:14px; padding:12px 14px; margin-bottom:14px; margin-top:6px;
 }
-.resumen-title { font-family:'Space Mono',monospace; font-size:10px; color:var(--accent); letter-spacing:2px; margin-bottom:12px; }
-.resumen-row { display:flex; justify-content:space-between; font-size:12px; margin-bottom:6px; }
+.resumen-title { font-family:'Space Mono',monospace; font-size:9px; color:var(--muted); letter-spacing:2px; margin-bottom:10px; }
+.resumen-row { display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px; }
 .resumen-total {
-  display:flex; justify-content:space-between; font-size:16px; font-weight:700;
-  border-top:1px solid var(--accent-soft); padding-top:10px; margin-top:6px; color:var(--accent);
+  display:flex; justify-content:space-between; font-size:12px; font-weight:700;
+  border-top:1px solid var(--border); padding-top:8px; margin-top:8px; color:#d9d9d9;
 }
 
 /* RESET */
@@ -516,17 +665,12 @@ input:disabled + .toggle-slider { opacity:0.5; cursor:not-allowed; }
     <div class="brand-row">
       <div class="brand-title">MARCA DE TINTAS</div>
       <select class="brand-select" id="brand-select" onchange="onBrandChange(this.value)">
-        <option value="MIXTO">Mixto (ATOM X elige la mejor)</option>
-        <option value="ETERNAL">Eternal</option>
-        <option value="VICE">Vice</option>
-        <option value="DYNAMIC">Dynamic</option>
-        <option value="RADIANT">Radiant</option>
-        <option value="DERMAGLO">Dermaglo</option>
-        <option value="ALLEGORY">Allegory</option>
-        <option value="HYPE_INK">Hype Ink</option>
+        <option value="ETERNAL">Eternal Ink</option>
+        <option value="VICE">Vice Colors</option>
+        <option value="RADIANT">Radiant Colors</option>
       </select>
     </div>
-    <div class="brand-hint" id="brand-hint">Mixto: ATOM X puede mezclar marcas segun el color y el comportamiento en piel.</div>
+    <div class="brand-hint" id="brand-hint">Colores por marca elegida. Negros y blancos los decide ATOM X en automatico.</div>
   </div>
 
   <!-- UPLOAD -->
@@ -537,6 +681,7 @@ input:disabled + .toggle-slider { opacity:0.5; cursor:not-allowed; }
       <div class="upload-sub">ATOM X detecta los colores y te dice<br>exactamente que tintas necesitas</div>
     </div>
     <img id="preview-img" alt="Diseno">
+    <div class="preview-overlay" id="preview-overlay"></div>
     <input type="file" id="file-input" accept="image/*" onchange="handleFile(event)">
   </div>
 
@@ -753,31 +898,57 @@ let catalogoEstado = {
 
 // Preferencias de marca (Design)
 const brandInfo = {
-  MIXTO:   { label: 'Mixto', hint: 'ATOM X puede mezclar marcas segun el color y el comportamiento en piel.' },
-  ETERNAL: { label: 'Eternal', hint: 'Solo Eternal. Si falta un tono, te avisare para mirar otra marca.' },
-  VICE:    { label: 'Vice', hint: 'Solo Vice/Vice Colors. Si falta un tono, te avisare para mirar otra marca.' },
-  DYNAMIC: { label: 'Dynamic', hint: 'Solo Dynamic. Ideal para negros y blancos. Si falta un tono, te avisare.' },
-  RADIANT: { label: 'Radiant', hint: 'Solo Radiant. Blanco/colores con mucho punch. Si falta un tono, te avisare.' },
-  DERMAGLO:{ label: 'Dermaglo', hint: 'Solo Dermaglo (colores). Si falta un tono, te avisare.' },
-  ALLEGORY:{ label: 'Allegory', hint: 'Solo Allegory (negros). Si falta un tono, te avisare.' },
-  HYPE_INK:{ label: 'Hype Ink', hint: 'Solo Hype Ink. Si falta un tono, te avisare.' },
+  ETERNAL: { label: 'Eternal Ink', hint: 'Colores de Eternal Ink. Negros y blancos se ajustan solos con la mejor opcion tecnica.' },
+  VICE:    { label: 'Vice Colors', hint: 'Colores de Vice Colors. Negros y blancos se ajustan solos con la mejor opcion tecnica.' },
+  RADIANT: { label: 'Radiant Colors', hint: 'Colores de Radiant Colors. Negros y blancos se ajustan solos con la mejor opcion tecnica.' },
 };
 
-let selectedBrandMode = (localStorage.getItem('atomx_brand_mode') || 'MIXTO').toUpperCase();
-if (!brandInfo[selectedBrandMode]) selectedBrandMode = 'MIXTO';
+let selectedBrandMode = (localStorage.getItem('atomx_brand_mode') || 'ETERNAL').toUpperCase();
+if (!brandInfo[selectedBrandMode]) selectedBrandMode = 'ETERNAL';
+let brandChangeTimer = null;
+let isAnalyzing = false;
+let lastAnalysis = null;
+
+const brandCatalogMeta = {
+  ETERNAL: {
+    label: 'Eternal Ink',
+    categoryUrl: 'https://www.atomxsupply.com/index.php?controller=category&id_category=297&id_lang=1',
+  },
+  VICE: {
+    label: 'Vice Colors',
+    categoryUrl: 'https://www.atomxsupply.com/index.php?controller=category&id_category=221&id_lang=1',
+  },
+  RADIANT: {
+    label: 'Radiant Colors',
+    categoryUrl: 'https://www.atomxsupply.com/index.php?controller=category&id_category=227&id_lang=1',
+  },
+};
 
 function setBrandUI() {
   const select = document.getElementById('brand-select');
   const hint = document.getElementById('brand-hint');
   if (select) select.value = selectedBrandMode;
-  if (hint) hint.textContent = brandInfo[selectedBrandMode]?.hint || brandInfo.MIXTO.hint;
+  if (hint) {
+    const baseHint = brandInfo[selectedBrandMode]?.hint || brandInfo.ETERNAL.hint;
+    const count = countBrandItems(selectedBrandMode);
+    const shopUrl = brandCatalogMeta[selectedBrandMode]?.categoryUrl || '';
+    hint.innerHTML = count === 0
+      ? `${baseHint} Ahora mismo no veo productos de esa marca en el catalogo cargado.${shopUrl ? ` <a href="${shopUrl}" target="_blank" rel="noopener">Ver categoria</a>` : ''}`
+      : `${baseHint}${shopUrl ? ` <a href="${shopUrl}" target="_blank" rel="noopener">Ver categoria</a>` : ''}`;
+  }
 }
 
 function onBrandChange(value) {
-  selectedBrandMode = String(value || 'MIXTO').toUpperCase();
-  if (!brandInfo[selectedBrandMode]) selectedBrandMode = 'MIXTO';
+  selectedBrandMode = String(value || 'ETERNAL').toUpperCase();
+  if (!brandInfo[selectedBrandMode]) selectedBrandMode = 'ETERNAL';
   localStorage.setItem('atomx_brand_mode', selectedBrandMode);
   setBrandUI();
+  if (imageBase64 && !isAnalyzing) {
+    if (brandChangeTimer) clearTimeout(brandChangeTimer);
+    brandChangeTimer = setTimeout(() => {
+      analyzeImage();
+    }, 180);
+  }
 }
 
 // â”€â”€ CONTADOR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -850,6 +1021,10 @@ function flattenCatalog(source = catalogo) {
   );
 }
 
+function countBrandItems(mode = selectedBrandMode) {
+  return flattenCatalog().filter((item) => shouldRespectSelectedBrand(item.categoria) && brandAccepts(item.marca, mode)).length;
+}
+
 function findCatalogItem(nombreTinta) {
   const target = normalizeText(nombreTinta);
   if (!target) return null;
@@ -858,19 +1033,42 @@ function findCatalogItem(nombreTinta) {
   const exact = items.find((item) => normalizeText(item.nombre) === target);
   if (exact) return exact;
 
-  const relaxed = target.replace(/^(eternal|dynamic|allegory)\s+/, '');
+  const relaxed = target.replace(/^(eternal|dynamic|allegory|radiant|vice|dermaglo|hype)\s+/, '');
   return items.find((item) => {
     const current = normalizeText(item.nombre);
-    return current.includes(relaxed) || relaxed.includes(current.replace(/^(eternal|dynamic|allegory)\s+/, ''));
+    return current.includes(relaxed) || relaxed.includes(current.replace(/^(eternal|dynamic|allegory|radiant|vice|dermaglo|hype)\s+/, ''));
   }) || null;
+}
+
+function findCatalogItemBySku(rawSku, mode = 'MIXTO') {
+  const sku = normalizeText(rawSku).replace(/\s+/g, '');
+  if (!sku) return null;
+  const items = flattenCatalog().filter((item) => {
+    if (!brandAccepts(item.marca, mode)) return false;
+    const ref = normalizeText(item.referencia || '').replace(/\s+/g, '');
+    return ref === sku;
+  });
+  return items[0] || null;
 }
 
 function brandAccepts(marca = '', mode = selectedBrandMode) {
   const m = String(marca || 'ETERNAL').toUpperCase();
-  const modeUpper = String(mode || 'MIXTO').toUpperCase();
-  if (modeUpper === 'MIXTO') return true;
+  const modeUpper = String(mode || 'ETERNAL').toUpperCase();
   if (modeUpper === 'VICE') return m === 'VICE' || m === 'VICE_COLORS';
   return m === modeUpper;
+}
+
+function shouldRespectSelectedBrand(categoria = '') {
+  const cat = String(categoria || '').toLowerCase();
+  return cat === 'color';
+}
+
+function promptBrandAccepts(item, mode = selectedBrandMode) {
+  if (!item) return false;
+  if (!shouldRespectSelectedBrand(item.categoria)) {
+    return ['DYNAMIC', 'ALLEGORY', 'HYPE_INK', 'VICE_COLORS', 'VICE', 'RADIANT', 'ETERNAL'].includes(String(item.marca || '').toUpperCase());
+  }
+  return brandAccepts(item.marca, mode);
 }
 
 function listBrandsForCategory(categoria = '') {
@@ -893,7 +1091,7 @@ function listBrandsForCategory(categoria = '') {
   return ordered;
 }
 
-function findCatalogItemWithBrand(nombreTinta, mode = selectedBrandMode) {
+function findCatalogItemWithBrand(nombreTinta, mode = selectedBrandMode, categoriaEsperada = '') {
   const target = normalizeText(nombreTinta);
   if (!target) return null;
 
@@ -902,10 +1100,22 @@ function findCatalogItemWithBrand(nombreTinta, mode = selectedBrandMode) {
   if (exact) return exact;
 
   const relaxed = target.replace(/^(eternal|dynamic|allegory|radiant|vice|dermaglo|hype)\s+/, '');
-  return items.find((item) => {
-    const current = normalizeText(item.nombre);
-    return current.includes(relaxed) || relaxed.includes(current.replace(/^(eternal|dynamic|allegory|radiant|vice|dermaglo|hype)\s+/, ''));
-  }) || null;
+  const categoria = String(categoriaEsperada || '').toLowerCase();
+  return items
+    .map((item) => {
+      const current = normalizeText(item.nombre);
+      const currentRelaxed = current.replace(/^(eternal|dynamic|allegory|radiant|vice|dermaglo|hype)\s+/, '');
+      const exactRelaxed = currentRelaxed === relaxed;
+      const partial = current.includes(relaxed) || relaxed.includes(currentRelaxed);
+      const score =
+        (exactRelaxed ? 12 : 0) +
+        (partial ? 6 : 0) +
+        (categoria && String(item.categoria || '').toLowerCase() === categoria ? 4 : 0) +
+        (item.stock == null ? 0 : item.stock > 0 ? 2 : -1);
+      return { item, score };
+    })
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score || String(a.item.nombre || '').localeCompare(String(b.item.nombre || '')))[0]?.item || null;
 }
 
 function updateCatalogBadge() {
@@ -960,6 +1170,7 @@ function applyRemoteCatalog(payload) {
     total: Number(payload.total || flattenCatalog(next).length || 0),
   };
   updateCatalogBadge();
+  setBrandUI();
   return true;
 }
 
@@ -980,6 +1191,7 @@ async function loadCatalogoRemoto() {
       total: flattenCatalog(catalogoLocal).length,
     };
     updateCatalogBadge();
+    setBrandUI();
   }
 }
 
@@ -1098,12 +1310,12 @@ function buildUploadImage(canvas) {
 }
 
 function isSkinTone(h, s, l) {
-  // Filtra SOLO tonos de piel humana real del fondo/brazo:
-  // matiz muy cÃ¡lido (naranja-melocotÃ³n), saturaciÃ³n BAJA (piel natural no es muy saturada),
-  // luminosidad ALTA (la piel expuesta es clara en foto)
-  // Colores carne usados en tatuajes tienen mayor saturaciÃ³n o menor luminosidad
-  const warmHue = (h >= 10 && h <= 35);
-  return warmHue && s >= 8 && s <= 38 && l >= 55 && l <= 85;
+  // Lo hacemos bastante conservador para no cargarnos amarillos, melocotones
+  // o beiges del propio tattoo. Solo filtramos tonos piel muy plausibles.
+  const warmHue = (h >= 12 && h <= 28);
+  const softSat = s >= 8 && s <= 26;
+  const midLight = l >= 52 && l <= 82;
+  return warmHue && softSat && midLight;
 }
 
 function hslToCategory(h, s, l) {
@@ -1168,11 +1380,16 @@ function getDominantColors(canvas, n) {
     const bs = satBucket;
     const bl = lightBucket;
     const key = `${bh},${bs},${bl}`;
-    if (!buckets[key]) buckets[key] = { count: 0, rSum: 0, gSum: 0, bSum: 0 };
+    if (!buckets[key]) buckets[key] = { count: 0, rSum: 0, gSum: 0, bSum: 0, xSum: 0, ySum: 0 };
     buckets[key].count++;
     buckets[key].rSum += r;
     buckets[key].gSum += g;
     buckets[key].bSum += b;
+    const pixelIndex = i / 4;
+    const x = pixelIndex % w;
+    const y = Math.floor(pixelIndex / w);
+    buckets[key].xSum += x;
+    buckets[key].ySum += y;
   }
 
   const candidates = Object.entries(buckets)
@@ -1189,6 +1406,12 @@ function getDominantColors(canvas, n) {
         hex: rgbToHex(r, g, b),
         categoria: hslToCategory(hsl[0], hsl[1], hsl[2]),
         importancia: getColorImportance(hsl[0], hsl[1], hsl[2], val.count),
+        centroid: {
+          x: val.count ? val.xSum / val.count : w / 2,
+          y: val.count ? val.ySum / val.count : h / 2,
+          width: w,
+          height: h,
+        },
       };
     })
     .sort((a, b) => b.importancia - a.importancia)
@@ -1205,6 +1428,7 @@ function getDominantColors(canvas, n) {
         hex: candidate.hex,
         categoria: candidate.categoria,
         porcentaje: total ? Number(((candidate.count / total) * 100).toFixed(1)) : 0,
+        centroid: candidate.centroid,
       });
     }
     if (result.length >= n) break;
@@ -1216,6 +1440,112 @@ function getDominantColors(canvas, n) {
     porcentaje: Number(((color.porcentaje / selectedTotal) * 100).toFixed(1)),
     papel: getColorRole(index, color.porcentaje, color.hsl),
   }));
+}
+
+function hexDistance(hexA = '', hexB = '') {
+  const a = String(hexA || '').replace('#', '');
+  const b = String(hexB || '').replace('#', '');
+  if (!/^[0-9a-f]{6}$/i.test(a) || !/^[0-9a-f]{6}$/i.test(b)) return 999999;
+  const ar = parseInt(a.slice(0, 2), 16);
+  const ag = parseInt(a.slice(2, 4), 16);
+  const ab = parseInt(a.slice(4, 6), 16);
+  const br = parseInt(b.slice(0, 2), 16);
+  const bg = parseInt(b.slice(2, 4), 16);
+  const bb = parseInt(b.slice(4, 6), 16);
+  return Math.sqrt(((ar - br) ** 2) + ((ag - bg) ** 2) + ((ab - bb) ** 2));
+}
+
+function buildPreviewMarkerPayload(colors = [], recomendaciones = []) {
+  const recs = recomendaciones || [];
+  return (colors || []).map((color) => {
+    const best = recs
+      .map((rec, index) => ({
+        rec,
+        index,
+        distance: hexDistance(color.hex, rec.hex_objetivo || ''),
+      }))
+      .sort((a, b) => a.distance - b.distance)[0];
+
+    return {
+      ...color,
+      tintaId: best ? `tinta-card-${best.index}` : '',
+      tintaColorBase: best?.rec?.color_base || color.nombre || '',
+      tintaLabel: best?.rec?.opcion1?.tinta || best?.rec?.color_base || color.nombre || color.hex,
+    };
+  });
+}
+
+function setActiveVisualTarget(targetName = '', tintaId = '') {
+  const target = String(targetName || '').trim().toLowerCase();
+
+  document.querySelectorAll('.tinta-card').forEach((card) => {
+    const base = String(card.getAttribute('data-color-base') || '').trim().toLowerCase();
+    const matchByName = target && (base.includes(target) || target.includes(base));
+    const matchById = tintaId && card.id === tintaId;
+    const match = matchByName || matchById;
+    card.style.borderColor = match ? 'rgba(255,77,0,0.55)' : '';
+    card.style.boxShadow = match ? '0 0 0 1px rgba(255,77,0,0.2) inset' : '';
+  });
+
+  document.querySelectorAll('.color-swatch').forEach((swatch) => {
+    const base = String(swatch.getAttribute('data-color-name') || '').trim().toLowerCase();
+    const match = target && (base.includes(target) || target.includes(base));
+    swatch.classList.toggle('target', !!match);
+  });
+
+  document.querySelectorAll('.preview-marker').forEach((marker) => {
+    const base = String(marker.getAttribute('data-target-name') || '').trim().toLowerCase();
+    const matchByName = target && (base.includes(target) || target.includes(base));
+    const matchById = tintaId && marker.getAttribute('data-target-id') === tintaId;
+    marker.style.filter = matchByName || matchById ? 'drop-shadow(0 0 10px rgba(255,77,0,0.7))' : '';
+  });
+}
+
+function renderPreviewMarkers(colors = [], recomendaciones = []) {
+  const overlay = document.getElementById('preview-overlay');
+  if (!overlay) return;
+  overlay.innerHTML = '';
+
+  const markers = buildPreviewMarkerPayload(colors, recomendaciones)
+    .filter((color) => color?.centroid && color.porcentaje >= 6)
+    .slice(0, 6);
+
+  const overlayW = overlay.clientWidth || overlay.offsetWidth || 1;
+  const overlayH = overlay.clientHeight || overlay.offsetHeight || 1;
+
+  markers.forEach((color) => {
+    const srcW = color.centroid?.width || overlayW;
+    const srcH = color.centroid?.height || overlayH;
+    const scale = Math.max(overlayW / srcW, overlayH / srcH);
+    const renderedW = srcW * scale;
+    const renderedH = srcH * scale;
+    const offsetX = (overlayW - renderedW) / 2;
+    const offsetY = (overlayH - renderedH) / 2;
+    const x = offsetX + (color.centroid.x * scale);
+    const y = offsetY + (color.centroid.y * scale);
+    const cx = (x / overlayW) * 100;
+    const cy = (y / overlayH) * 100;
+    const marker = document.createElement('div');
+    marker.className = 'preview-marker';
+    marker.setAttribute('data-target-name', color.tintaColorBase || color.nombre || '');
+    marker.setAttribute('data-target-id', color.tintaId || '');
+    marker.style.left = `${Math.max(8, Math.min(92, cx))}%`;
+    marker.style.top = `${Math.max(10, Math.min(88, cy))}%`;
+    marker.innerHTML = `
+      <div class="preview-line"></div>
+      <div class="preview-dot" style="background:${color.hex}"></div>
+      <div class="preview-label">${color.tintaColorBase || color.nombre || color.papel || color.categoria || color.hex}</div>
+    `;
+    marker.addEventListener('click', (event) => {
+      event.stopPropagation();
+      setActiveVisualTarget(color.tintaColorBase || color.nombre || '', color.tintaId || '');
+      if (color.tintaId) {
+        const card = document.getElementById(color.tintaId);
+        if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+    overlay.appendChild(marker);
+  });
 }
 
 // â”€â”€ ATOMX CONTROLLER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -1289,6 +1619,7 @@ function handleFile(e) {
 
       const preview = document.getElementById('preview-img');
       preview.src = data;
+      preview.onload = () => requestAnimationFrame(() => renderPreviewMarkers(extractedColors));
       preview.style.display = 'block';
       document.getElementById('upload-placeholder').style.display = 'none';
       document.getElementById('upload-zone').classList.add('has-image');
@@ -1320,8 +1651,10 @@ function stopLoadingAnimation() {
 // â”€â”€ ANALYZE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function analyzeImage() {
   if (!imageBase64) return;
+  if (isAnalyzing) return;
 
   const skin = skinInfo[selectedSkin];
+  isAnalyzing = true;
 
   document.getElementById('analyze-btn').disabled = true;
   document.getElementById('loading').style.display = 'block';
@@ -1342,22 +1675,65 @@ async function analyzeImage() {
     .filter(Boolean)
     .join(', ');
   const modoMarca = brandInfo[selectedBrandMode]?.label || selectedBrandMode;
+  const catalogoSku = buildCatalogPromptList(selectedBrandMode);
+  const catalogoAlternativas = buildAlternativeCatalogPromptList(selectedBrandMode);
   const colorList = extractedColors.map((c, i) => {
     const [hh, ss, ll] = c.hsl;
     return `${i+1}. ${c.hex} | H:${hh} S:${ss}% L:${ll}% | peso:${c.porcentaje}% | papel:${c.papel} | categoria:${c.categoria}`;
   }).join('\n');
 
   const estilosInfo = `
-ESTILOS Y TINTAS TIPICAS:
+LECTURA DE ESTILO:
+- Realismo color:
+  * manda el parecido visual, volumen y temperatura real
+  * usa menos colores pero mejor elegidos
+  * negros solo para profundidad real, no para ensuciar
+  * si un tono es piel, oro viejo o amarillo calido, no lo conviertas en rosa/carne sin motivo
+- Realismo black and grey:
+  * negros, grises y algun blanco tecnico si hace falta luz
+  * contraste limpio, mucha lectura de volumen
+  * evita colores residuales salvo que sean realmente parte del tattoo
+- Tradicional:
+  * pocos colores, muy solidos, muy legibles
+  * lineas fuertes, negros claros, rojos, verdes, amarillos, azules clasicos
+  * Dermaglo puntua muy alto aqui si el color existe
+- Neotradicional:
+  * mas gama que tradicional, pero sin perder pegada
+  * sombras ricas, transiciones mas suaves, colores intensos
+  * Eternal, Vice y Radiant suelen cuadrar mejor por variedad
+- Anime / New School:
+  * colores mas vivos, contrastes altos, acentos muy claros y saturados
+  * lectura cartoon, cel shading, bloques muy definidos
+  * Vice Colors y Eternal suelen ser muy utiles aqui
+
+OTROS ESTILOS DE APOYO:
 - Japones/Irezumi: negros densos, rojos intensos, verde jade, azul cobalto oscuro, naranja koi, amarillo dorado. Armonia analoga en degradados, complementaria en focos.
-- Traditional/Old School: negros, lineas gruesas, rojo/azul/verde/amarillo solidos sin gradiente. Max 5 colores.
-- Neo-Traditional: como traditional + mas gama, gradientes suaves, vibrantes.
-- Realismo/Retrato: escala de grises frios, negros, desaturados. Armonia monocromatica.
 - Blackwork/Dotwork: solo negros de maxima densidad.
 - Watercolor: muy saturados sin linea negra, pasteles vivos. Armonia analoga siempre.
 - Chicano: solo grises y negros.
-- Fine Line: negro suave para lineas finas, grises muy diluidos.
-- New School: colores cartoon muy saturados, complementarios para impacto.`;
+- Fine Line: negro suave para lineas finas, grises muy diluidos.`;
+
+  const criterioVisualInfo = `
+CRITERIO VISUAL ATOM X:
+- No copies solo el color visible: interpreta la funcion de cada zona dentro de la pieza.
+- Piensa como tatuador: que parte debe avanzar, cual debe retroceder, cual necesita respirar y cual necesita separacion.
+- Una sombra no siempre es negro. Una luz no siempre es blanco. Una transicion buena puede ser mas importante que el color principal.
+- Dos zonas parecidas pueden pedir tonos distintos si su funcion visual no es la misma.
+- Si una excepcion mejora claramente la lectura general, puedes romper la logica basica.
+
+PRIORIDAD DE DECISION:
+1. lectura general de la pieza
+2. volumen y profundidad
+3. armonia entre zonas
+4. contraste util
+5. fidelidad al color base
+6. saturacion/intensidad
+
+COMPORTAMIENTO ESPERADO:
+- decide por zonas, pero mirando siempre el tatuaje completo
+- detecta si una zona funciona como base, sombra, transicion, luz, linea o espacio de respiro
+- si falta un tono puente util, puedes proponerlo aunque no sea el color dominante exacto
+- evita usar negro o blanco por sistema si otra solucion mantiene mejor la pieza`;
 
   const prompt = `Eres ATOMX, experto colorista en tintas de tatuaje (negra/blanca/color). Analiza la imagen.
 
@@ -1373,33 +1749,51 @@ PIEL: ${skin.nombre} (Fitzpatrick ${skin.fitzpatrick})
 VIABILIDAD: ${viabilidad}
 
 ${estilosInfo}
+${criterioVisualInfo}
 
 REGLAS COLORIMETRIA:
-- Rojos H:0-14 S>70: Crimson Red / Ruby Red / Vette Red
-- Rojos H:0-14 S 40-70 o L<35: Deep Red / Dark Red / Undead Red
-- Rojo-naranja H:15-30: Rusty Red / Burnt Orange
 - Melanina filtra calidos y claros en FT III+; negro y azul oscuro estables siempre
 - Blanco/amarillo inviables FT IV+; pastel desaparece en piel media/oscura
+- Amarillo calido claro NO debe convertirse automaticamente en color carne. Si la saturacion es real, tratalo como amarillo.
 - Evita exceso de tonos que compiten entre si
 
 CATALOGO:
 - CATEGORIAS: ${categorias}
 - MARCAS DISPONIBLES: ${marcasDisponibles}
 
-MODO DE MARCA SELECCIONADO: ${selectedBrandMode} (${modoMarca})
+MODO DE MARCA SELECCIONADO PARA COLORES: ${selectedBrandMode} (${modoMarca})
 REGLAS DE MARCA:
-- Si MODO=Mixto: puedes mezclar marcas. Blancos prioriza Radiant (Super/Nuclear White) > Dynamic > Eternal/Vice. Negros prioriza Dynamic/Allegory/Hype Ink/Vice. Colores prioriza Dermaglo/Vice Colors/Eternal/Radiant.
-- Si MODO!=Mixto: opcion1 SIEMPRE debe ser de esa marca. Si no existe un tono util en esa marca, escribe en "advertencia": "No existe en ${modoMarca}. Mirar otra marca." y en opcion2 pon la mejor alternativa de otra marca del catalogo.
+- Eternal = densa, estable y muy completa en gama. Muy buena para quien empieza y para color fiable.
+- Radiant = mas liquida y muy facil de meter. Muy buena para gente que empieza y para realismo/color limpio.
+- Vice Colors = colores muy compactos y negros muy potentes.
+- Dynamic = viejaconfiable. Mucha gente la usa para todo al empezar. En negro y dilucion funciona muy bien.
+- Hype Ink tambien se usa para diluciones. Vice negro = muy potente. Luego Dynamic como negro facil y universal.
+- Mejor blanco para realismo: Super White de Radiant. Vice White muy bueno si quieren mas espesor. Nuclear White = muy denso. Tradicional suele usar tambien Dynamic White y Dermaglo/Nuclear según mano.
+- En NEGROS y BLANCOS NO dependes de la marca elegida: usa la mejor opcion tecnica del catalogo.
+- En COLOR, opcion1 SIEMPRE debe ser de ${modoMarca}. Si no existe un tono util en esa marca, escribe en "advertencia": "No existe en ${modoMarca}. Mirar otra marca." y en opcion2 pon la mejor alternativa de otra marca del catalogo.
+- Ojo con rojos claros de Eternal en piel clara: pueden bajar hacia rosa. Si la intencion visual pide rojo real, recomienda un tono mas tonico/mas fuerte.
+- Referencias utiles de venta/uso real: Eternal Lipstick Red funciona muy bien; "el rojo" de Radiant funciona muy bien; Red Revenge de Vice funciona muy bien; Lightning Yellow de Eternal sale mucho.
+
+REGLA CRITICA:
+- NUNCA inventes nombres.
+- SOLO puedes recomendar nombres EXACTOS del listado de abajo.
+- El nombre y SKU deben existir en el catalogo.
+
+CATALOGO EXACTO DISPONIBLE:
+${catalogoSku}
+
+CATALOGO DE ALTERNATIVAS DE COLOR (solo para opcion2 si en ${modoMarca} no existe un tono valido):
+${catalogoAlternativas}
 
 Para cada color da EXACTAMENTE 2 tintas (opcion principal y alternativa mas contrastada que cure mejor).
-Formato de salida para cada tinta: ZONA / FUNCION / NOMBRE EXACTO DE TINTA / MOTIVO
-Respuesta breve. Razones tecnicas de maximo 18 palabras.
+Formato de salida para cada tinta: ZONA / FUNCION / NOMBRE EXACTO DE TINTA / SKU / MOTIVO
+Respuesta breve. Razones tecnicas de maximo 18 palabras y con criterio visual real.
 No repitas explicaciones largas.
 No superes 7 elementos en "colores_detectados".
 No superes 7 elementos en "tintas_recomendadas".
 
 Responde SOLO JSON sin texto extra ni backticks:
-{"estilo":"estilo detectado","descripcion_estilo":"tintas tipicas de este estilo en una frase","colores_detectados":[{"nombre":"nombre descriptivo","hex":"#xxx","porcentaje":30}],"tintas_recomendadas":[{"color_base":"nombre color","zona":"zona del diseno","funcion":"base|sombra|transicion|luz|linea","categoria":"negra|blanca|color","hex_objetivo":"#xxx","opcion1":{"tinta":"Marca Nombre Exacto","razon":"motivo tecnico"},"opcion2":{"tinta":"Marca Nombre Exacto","razon":"alternativa mas contrastada"},"advertencia":"aviso real o vacio"}],"consejo_piel":"consejo especifico para piel ${skin.nombre}"}`;
+{"estilo":"estilo detectado","descripcion_estilo":"tintas tipicas de este estilo en una frase","colores_detectados":[{"nombre":"nombre descriptivo","hex":"#xxx","porcentaje":30}],"tintas_recomendadas":[{"color_base":"nombre color","zona":"zona del diseno","funcion":"base|sombra|transicion|luz|linea","categoria":"negra|blanca|color","hex_objetivo":"#xxx","opcion1":{"tinta":"Nombre exacto del catalogo","sku":"SKU exacto","razon":"motivo tecnico"},"opcion2":{"tinta":"Nombre exacto del catalogo","sku":"SKU exacto","razon":"alternativa mas contrastada"},"advertencia":"aviso real o vacio"}],"consejo_piel":"consejo especifico para piel ${skin.nombre}"}`;
 
   try {
     const response = await fetch(getAnalyzeEndpoint(), {
@@ -1425,15 +1819,19 @@ Responde SOLO JSON sin texto extra ni backticks:
     } catch(jsonErr) {
       throw new Error('La IA ha devuelto el JSON cortado. Prueba otra vez con la misma imagen.');
     }
+    parsed = enforceCatalogNames(parsed);
 
     stopLoadingAnimation();
+    isAnalyzing = false;
     document.getElementById('loading').style.display = 'none';
     setAtomxState('results');
     incrementCounter();
+    lastAnalysis = parsed;
     renderResults(parsed);
 
   } catch (err) {
     stopLoadingAnimation();
+    isAnalyzing = false;
     document.getElementById('loading').style.display = 'none';
     document.getElementById('analyze-btn').disabled = false;
     setAtomxState('error');
@@ -1460,13 +1858,137 @@ function formatMarca(marca = '') {
   return m || 'CATALOGO';
 }
 
-function resolveInkForUI(nombreTinta, categoriaEsperada = '') {
-  // 1) Intento dentro del modo elegido
-  const preferred = selectedBrandMode === 'MIXTO'
-    ? findCatalogItem(nombreTinta)
-    : findCatalogItemWithBrand(nombreTinta, selectedBrandMode);
+function normalizeStyleName(style = '') {
+  const s = normalizeText(style);
+  if (!s) return 'generico';
+  if (s.includes('realismo') && (s.includes('color') || s.includes('colour'))) return 'realismo_color';
+  if ((s.includes('realismo') || s.includes('realistic') || s.includes('portrait')) && (s.includes('black') || s.includes('grey') || s.includes('gray') || s.includes('gris'))) return 'realismo_black_grey';
+  if (s.includes('traditional') || s.includes('tradicional') || s.includes('old school')) return 'tradicional';
+  if (s.includes('neo traditional') || s.includes('neotradicional') || s.includes('neo-traditional')) return 'neotradicional';
+  if (s.includes('anime') || s.includes('new school') || s.includes('cartoon') || s.includes('manga')) return 'anime_newschool';
+  return 'generico';
+}
 
-  if (selectedBrandMode === 'MIXTO') {
+const styleBrandPriority = {
+  realismo_color: {
+    negra: ['VICE_COLORS', 'DYNAMIC', 'HYPE_INK', 'ALLEGORY', 'ETERNAL'],
+    blanca: ['RADIANT', 'VICE_COLORS', 'VICE', 'ETERNAL', 'DYNAMIC'],
+    color: ['RADIANT', 'ETERNAL', 'VICE_COLORS', 'DERMAGLO'],
+  },
+  realismo_black_grey: {
+    negra: ['VICE_COLORS', 'DYNAMIC', 'HYPE_INK', 'ALLEGORY', 'ETERNAL'],
+    blanca: ['RADIANT', 'VICE_COLORS', 'VICE', 'DYNAMIC', 'ETERNAL'],
+    color: ['ETERNAL', 'RADIANT'],
+  },
+  tradicional: {
+    negra: ['VICE_COLORS', 'DYNAMIC', 'HYPE_INK', 'ALLEGORY', 'ETERNAL'],
+    blanca: ['DYNAMIC', 'RADIANT', 'VICE_COLORS', 'VICE', 'ETERNAL'],
+    color: ['DERMAGLO', 'VICE_COLORS', 'ETERNAL', 'RADIANT'],
+  },
+  neotradicional: {
+    negra: ['VICE_COLORS', 'DYNAMIC', 'ALLEGORY', 'HYPE_INK', 'ETERNAL'],
+    blanca: ['RADIANT', 'VICE_COLORS', 'VICE', 'DYNAMIC', 'ETERNAL'],
+    color: ['ETERNAL', 'VICE_COLORS', 'RADIANT', 'DERMAGLO'],
+  },
+  anime_newschool: {
+    negra: ['VICE_COLORS', 'DYNAMIC', 'ALLEGORY', 'ETERNAL'],
+    blanca: ['RADIANT', 'VICE_COLORS', 'VICE', 'DYNAMIC', 'ETERNAL'],
+    color: ['VICE_COLORS', 'RADIANT', 'ETERNAL', 'DERMAGLO'],
+  },
+  generico: {
+    negra: ['VICE_COLORS', 'DYNAMIC', 'HYPE_INK', 'ALLEGORY', 'ETERNAL'],
+    blanca: ['RADIANT', 'VICE_COLORS', 'VICE', 'DYNAMIC', 'ETERNAL'],
+    color: ['ETERNAL', 'RADIANT', 'VICE_COLORS', 'DERMAGLO'],
+  },
+};
+
+function scoreBrandForStyle(styleKey, categoria, marca) {
+  const m = String(marca || '').toUpperCase();
+  const cat = String(categoria || 'color').toLowerCase();
+  const priority = styleBrandPriority[styleKey] || styleBrandPriority.generico;
+  const list = priority[cat] || priority.color;
+  const idx = list.indexOf(m);
+  if (idx === -1) return 0;
+  return Math.max(1, 10 - idx * 2);
+}
+
+function listCandidatesForReference(nombreTinta = '') {
+  const target = normalizeText(nombreTinta);
+  if (!target) return [];
+  const items = flattenCatalog();
+  const relaxed = target.replace(/^(eternal|dynamic|allegory|radiant|vice|dermaglo|hype)\s+/, '');
+  return items.filter((item) => {
+    const current = normalizeText(item.nombre);
+    return current === target ||
+      current.includes(relaxed) ||
+      relaxed.includes(current.replace(/^(eternal|dynamic|allegory|radiant|vice|dermaglo|hype)\s+/, ''));
+  });
+}
+
+function chooseBestCatalogItem(nombreTinta = '', categoria = '', styleKey = 'generico', preferredSku = '') {
+  const bySku = preferredSku ? findCatalogItemBySku(preferredSku, 'MIXTO') : null;
+  if (bySku) return bySku;
+
+  const candidates = listCandidatesForReference(nombreTinta);
+  if (!candidates.length) return null;
+
+  return candidates
+    .map((item) => ({
+      item,
+      score:
+        scoreBrandForStyle(styleKey, categoria || item.categoria, item.marca) +
+        (String(item.categoria || '').toLowerCase() === String(categoria || '').toLowerCase() ? 4 : 0) +
+        (item.stock == null ? 0 : item.stock > 0 ? 2 : -1),
+    }))
+    .sort((a, b) => b.score - a.score || String(a.item.nombre).localeCompare(String(b.item.nombre)))[0]?.item || null;
+}
+
+function buildCatalogPromptList(mode = 'MIXTO') {
+  const filtered = flattenCatalog().filter((item) => promptBrandAccepts(item, mode));
+
+  return filtered
+    .filter((item) => item?.nombre)
+    .sort((a, b) => {
+      const byBrand = formatMarca(a.marca).localeCompare(formatMarca(b.marca));
+      if (byBrand !== 0) return byBrand;
+      const byCat = String(a.categoria || '').localeCompare(String(b.categoria || ''));
+      if (byCat !== 0) return byCat;
+      return String(a.nombre || '').localeCompare(String(b.nombre || ''));
+    })
+    .map((item) => `- SKU:${item.referencia || 'SIN-SKU'} | MARCA:${formatMarca(item.marca)} | CAT:${String(item.categoria || '').toUpperCase()} | NOMBRE:${item.nombre}`)
+    .join('\n');
+}
+
+function buildAlternativeCatalogPromptList(mode = selectedBrandMode) {
+  return flattenCatalog()
+    .filter((item) => item?.nombre && shouldRespectSelectedBrand(item.categoria) && !brandAccepts(item.marca, mode))
+    .sort((a, b) => {
+      const byCat = String(a.categoria || '').localeCompare(String(b.categoria || ''));
+      if (byCat !== 0) return byCat;
+      const byBrand = formatMarca(a.marca).localeCompare(formatMarca(b.marca));
+      if (byBrand !== 0) return byBrand;
+      return String(a.nombre || '').localeCompare(String(b.nombre || ''));
+    })
+    .map((item) => `- SKU:${item.referencia || 'SIN-SKU'} | MARCA:${formatMarca(item.marca)} | CAT:${String(item.categoria || '').toUpperCase()} | NOMBRE:${item.nombre}`)
+    .join('\n');
+}
+
+function normalizeRecommendedInkName(rawName, resolvedItem) {
+  if (resolvedItem?.nombre) return resolvedItem.nombre;
+  return rawName || '';
+}
+
+function resolveInkForUI(nombreTinta, categoriaEsperada = '', preferredSku = '', styleKey = 'generico') {
+  const respectBrand = shouldRespectSelectedBrand(categoriaEsperada);
+  // 1) Intento dentro del modo elegido
+  const preferredBySku = preferredSku
+    ? findCatalogItemBySku(preferredSku, respectBrand ? selectedBrandMode : 'MIXTO')
+    : null;
+  const preferred = preferredBySku || (!respectBrand
+    ? chooseBestCatalogItem(nombreTinta, categoriaEsperada, styleKey, preferredSku)
+    : findCatalogItemWithBrand(nombreTinta, selectedBrandMode, categoriaEsperada));
+
+  if (!respectBrand) {
     return { item: preferred, note: '' };
   }
 
@@ -1475,7 +1997,7 @@ function resolveInkForUI(nombreTinta, categoriaEsperada = '') {
   }
 
   // 2) Si no existe en esa marca, busco en todo el catalogo y aviso
-  const fallback = findCatalogItem(nombreTinta);
+  const fallback = (preferredSku ? findCatalogItemBySku(preferredSku, 'MIXTO') : null) || chooseBestCatalogItem(nombreTinta, categoriaEsperada, styleKey, preferredSku);
   const categoria = fallback?.categoria || categoriaEsperada || '';
   const brandLabel = brandInfo[selectedBrandMode]?.label || selectedBrandMode;
   const alternatives = listBrandsForCategory(categoria)
@@ -1488,9 +2010,89 @@ function resolveInkForUI(nombreTinta, categoriaEsperada = '') {
   return { item: fallback, note };
 }
 
+function enforceCatalogNames(data) {
+  const next = structuredClone(data || {});
+  const styleKey = normalizeStyleName(next.estilo || '');
+  next.tintas_recomendadas = (next.tintas_recomendadas || []).map((t) => {
+    const r1 = resolveInkForUI(t.opcion1?.tinta || '', t.categoria || '', t.opcion1?.sku || '', styleKey);
+    const r2 = resolveInkForUI(t.opcion2?.tinta || '', t.categoria || '', t.opcion2?.sku || '', styleKey);
+    const advertencias = [t.advertencia || '', r1.note || '', r2.note || ''].filter(Boolean);
+
+    return {
+      ...t,
+      advertencia: advertencias.join(' '),
+      opcion1: {
+        ...(t.opcion1 || {}),
+        tinta: normalizeRecommendedInkName(t.opcion1?.tinta || '', r1.item),
+        sku: r1.item?.referencia || t.opcion1?.sku || '',
+      },
+      opcion2: {
+        ...(t.opcion2 || {}),
+        tinta: normalizeRecommendedInkName(t.opcion2?.tinta || '', r2.item),
+        sku: r2.item?.referencia || t.opcion2?.sku || '',
+      },
+    };
+  });
+  return next;
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function buildColorMapHtml(data) {
+  const detected = (data.colores_detectados || []).slice(0, 8);
+  const targets = (data.tintas_recomendadas || [])
+    .map((item) => ({
+      name: item.color_base || item.opcion1?.tinta || 'Tinta',
+      hex: item.hex_objetivo || '#999999',
+      role: item.funcion || 'target',
+    }))
+    .filter((item) => /^#?[0-9a-f]{6}$/i.test(String(item.hex || '').replace('#', '')))
+    .slice(0, 8);
+
+  const dots = [
+    ...detected.map((item) => ({ type: 'detected', name: item.nombre || 'Detectado', hex: item.hex, meta: `${item.porcentaje || 0}%` })),
+    ...targets.map((item) => ({ type: 'target', name: item.name, hex: item.hex, meta: item.role })),
+  ].map((item) => {
+    const hex = item.hex.startsWith('#') ? item.hex : `#${item.hex}`;
+    const rgb = hex.match(/[0-9a-f]{2}/gi)?.map((v) => parseInt(v, 16)) || [128, 128, 128];
+    const [h, s, l] = rgbToHsl(rgb[0], rgb[1], rgb[2]);
+    const left = clamp((h / 360) * 100, 3, 97);
+    const top = clamp(100 - l, 6, 94);
+    return `<button class="map-dot ${item.type}" style="left:${left}%;top:${top}%;background:${hex}" title="${item.name} · ${hex} · ${item.meta}" type="button"></button>`;
+  }).join('');
+
+  return `
+    <div class="section-title">Mapa de color</div>
+    <div class="map-legend">
+      <span class="map-pill"><span class="map-pill-dot" style="background:#ffffff;border:1px solid #0a0a0a"></span>Colores detectados</span>
+      <span class="map-pill"><span class="map-pill-dot" style="background:var(--accent)"></span>Tintas objetivo</span>
+    </div>
+    <div class="color-map">${dots}</div>
+    <div class="color-map-axis">
+      <span>TONO</span>
+      <span>CLARO / OSCURO</span>
+      <span>SATURACION VISUAL</span>
+    </div>`;
+}
+
+function bindInteractiveColorMap() {
+  const dots = [...document.querySelectorAll('.map-dot')];
+  if (!dots.length) return;
+
+  dots.forEach((dot) => {
+    dot.addEventListener('click', () => {
+      const targetName = String(dot.getAttribute('title') || '').split(' · ')[0].trim().toLowerCase();
+      setActiveVisualTarget(targetName);
+    });
+  });
+}
+
 // â”€â”€ RENDER RESULTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function renderResults(data) {
   const skin = skinInfo[selectedSkin];
+  const styleKey = normalizeStyleName(data.estilo || '');
   let html = '';
 
   if (data.estilo) {
@@ -1514,7 +2116,7 @@ function renderResults(data) {
     html += `<div class="colors-grid">`;
     data.colores_detectados.forEach(c => {
       html += `
-        <div class="color-swatch">
+        <div class="color-swatch" data-color-name="${c.nombre || ''}">
           <div class="swatch-color" style="background:${c.hex}"></div>
           <div class="swatch-info">
             <div class="swatch-name">${c.nombre}</div>
@@ -1526,12 +2128,16 @@ function renderResults(data) {
     html += `</div>`;
   }
 
+  if ((data.colores_detectados && data.colores_detectados.length) || (data.tintas_recomendadas && data.tintas_recomendadas.length)) {
+    html += buildColorMapHtml(data);
+  }
+
   html += `<div class="section-title">Tintas recomendadas</div>`;
   let totalMin = 0;
-  (data.tintas_recomendadas || []).forEach(t => {
+  (data.tintas_recomendadas || []).forEach((t, index) => {
     const hasWarning = t.advertencia && t.advertencia.length > 3;
-    const r1 = resolveInkForUI(t.opcion1?.tinta || '', t.categoria || '');
-    const r2 = resolveInkForUI(t.opcion2?.tinta || '', t.categoria || '');
+    const r1 = resolveInkForUI(t.opcion1?.tinta || '', t.categoria || '', t.opcion1?.sku || '', styleKey);
+    const r2 = resolveInkForUI(t.opcion2?.tinta || '', t.categoria || '', t.opcion2?.sku || '', styleKey);
     const item1 = r1.item;
     const item2 = r2.item;
     const precio1 = item1?.precio || buscarPrecio(t.opcion1?.tinta || '');
@@ -1544,7 +2150,7 @@ function renderResults(data) {
 
     totalMin += precio1;
     html += `
-      <div class="tinta-card">
+      <div class="tinta-card" id="tinta-card-${index}" data-color-base="${t.color_base || ''}">
         <div class="tinta-header">
           <div class="tinta-left">
             <div class="tinta-color-dot" style="background:${t.hex_objetivo || '#888'}"></div>
@@ -1558,17 +2164,17 @@ function renderResults(data) {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
           <div style="background:rgba(255,77,0,0.1);border:1px solid rgba(255,77,0,0.25);border-radius:10px;padding:10px">
             <div style="font-size:9px;color:var(--accent);font-family:'Space Mono',monospace;letter-spacing:1px;margin-bottom:4px">OPCION 1</div>
-            <div style="font-size:13px;font-weight:700;line-height:1.3">${t.opcion1?.tinta || '-'}</div>
+            <div class="tinta-real">${item1?.nombre || t.opcion1?.tinta || '-'}</div>
             <div style="font-size:11px;color:var(--muted);margin-top:4px">${t.opcion1?.razon || ''}</div>
-            <div style="font-size:10px;color:var(--muted);margin-top:4px">${meta1}</div>
+            <div class="tinta-meta-line">${meta1}${item1?.referencia ? ` · SKU ${item1.referencia}` : (t.opcion1?.sku ? ` · SKU ${t.opcion1.sku}` : '')}</div>
             ${r1.note ? `<div style="font-size:10px;color:#ffd600;margin-top:6px;line-height:1.35">${r1.note}</div>` : ''}
             <div style="font-size:14px;font-weight:700;color:var(--accent);margin-top:6px">${precio1.toFixed(2)}EUR</div>
           </div>
           <div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;padding:10px">
             <div style="font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:1px;margin-bottom:4px">OPCION 2</div>
-            <div style="font-size:13px;font-weight:700;line-height:1.3">${t.opcion2?.tinta || '-'}</div>
+            <div class="tinta-real">${item2?.nombre || t.opcion2?.tinta || '-'}</div>
             <div style="font-size:11px;color:var(--muted);margin-top:4px">${t.opcion2?.razon || ''}</div>
-            <div style="font-size:10px;color:var(--muted);margin-top:4px">${meta2}</div>
+            <div class="tinta-meta-line">${meta2}${item2?.referencia ? ` · SKU ${item2.referencia}` : (t.opcion2?.sku ? ` · SKU ${t.opcion2.sku}` : '')}</div>
             ${r2.note ? `<div style="font-size:10px;color:#ffd600;margin-top:6px;line-height:1.35">${r2.note}</div>` : ''}
             <div style="font-size:14px;font-weight:700;color:var(--muted);margin-top:6px">${precio2.toFixed(2)}EUR</div>
           </div>
@@ -1585,10 +2191,10 @@ function renderResults(data) {
       ${(data.tintas_recomendadas || []).map(t => `
         <div class="resumen-row">
           <span style="color:var(--muted)">${t.color_base}</span>
-          <span style="font-family:'Space Mono',monospace;font-size:12px;color:var(--muted)">Op.1: ${t.opcion1?.tinta || '-'}</span>
+          <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted)">Op.1: ${t.opcion1?.tinta || '-'}</span>
         </div>`).join('')}
       <div class="resumen-total">
-        <span>TOTAL ESTIMADO (op.1)</span>
+        <span>Total aprox. op.1</span>
         <span>${totalMin.toFixed(2)}EUR</span>
       </div>
     </div>`;
@@ -1599,12 +2205,18 @@ function renderResults(data) {
   resultsEl.innerHTML = html;
   resultsEl.style.display = 'block';
   document.getElementById('analyze-btn').style.display = 'none';
+  renderPreviewMarkers(extractedColors, data.tintas_recomendadas || []);
+  bindInteractiveColorMap();
   resultsEl.scrollIntoView({ behavior:'smooth' });
 }
 function resetApp() {
+  isAnalyzing = false;
+  if (brandChangeTimer) clearTimeout(brandChangeTimer);
+  lastAnalysis = null;
   imageBase64 = null;
   document.getElementById('preview-img').style.display = 'none';
   document.getElementById('preview-img').src = '';
+  document.getElementById('preview-overlay').innerHTML = '';
   document.getElementById('upload-placeholder').style.display = 'block';
   document.getElementById('upload-zone').classList.remove('has-image');
   unlockSkinSelector();

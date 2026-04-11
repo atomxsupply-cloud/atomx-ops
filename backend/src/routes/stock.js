@@ -1,9 +1,90 @@
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 const { db, log } = require('../db');
 const { auth } = require('../middleware/auth');
 const { getTienda } = require('../services/tiendaScope');
 
 const router = express.Router();
+const MATERIALS_CATALOG_PATH = path.join(__dirname, '..', '..', '..', 'datos', 'catalogo-web', 'catalogo_materiales_por_familia.json');
+
+let materialsCatalogCache = null;
+let materialsCatalogCacheMtime = 0;
+
+function normalizeText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+function loadMaterialsCatalog() {
+  try {
+    const stat = fs.statSync(MATERIALS_CATALOG_PATH);
+    if (!materialsCatalogCache || stat.mtimeMs !== materialsCatalogCacheMtime) {
+      materialsCatalogCache = JSON.parse(fs.readFileSync(MATERIALS_CATALOG_PATH, 'utf8'));
+      materialsCatalogCacheMtime = stat.mtimeMs;
+    }
+    return materialsCatalogCache || {};
+  } catch {
+    return {};
+  }
+}
+
+router.get('/materiales/catalogo', auth, (req, res) => {
+  const { familia = '', search = '', en_stock = '0', limit = '40' } = req.query;
+  const catalog = loadMaterialsCatalog();
+  const safeLimit = Math.min(Math.max(Number(limit) || 40, 1), 120);
+  const onlyInStock = en_stock === '1';
+  const normalizedSearch = normalizeText(search);
+  const requestedFamily = String(familia || '').trim();
+
+  const families = Object.entries(catalog)
+    .map(([familyKey, items]) => ({
+      key: familyKey,
+      label: familyKey.replace(/_/g, ' '),
+      total: Array.isArray(items) ? items.length : 0,
+    }))
+    .filter((family) => family.total > 0)
+    .sort((a, b) => b.total - a.total);
+
+  const sourceItems = requestedFamily && Array.isArray(catalog[requestedFamily])
+    ? catalog[requestedFamily]
+    : Object.values(catalog).flat();
+
+  const items = sourceItems
+    .filter((item) => {
+      const stock = Number(item.cantidad || 0);
+      if (onlyInStock && stock <= 0) return false;
+      if (!normalizedSearch) return true;
+      const haystack = normalizeText(`${item.nombre} ${item.referencia} ${item.categoria} ${item.familia}`);
+      return haystack.includes(normalizedSearch);
+    })
+    .slice(0, safeLimit)
+    .map((item) => ({
+      id: item.id,
+      nombre: item.nombre,
+      referencia: item.referencia || '',
+      categoria: item.categoria || '',
+      familia: item.familia || requestedFamily || '',
+      precio: Number(item.precio || 0),
+      stock_actual: Number(item.cantidad || 0),
+      activo: String(item.estado || '0') === '1',
+      imagen: item.imagen || '',
+    }));
+
+  res.json({
+    families,
+    items,
+    meta: {
+      family: requestedFamily || null,
+      search: search || '',
+      en_stock: onlyInStock,
+      limit: safeLimit,
+      total: items.length,
+    },
+  });
+});
 
 router.get('/', auth, (req, res) => {
   const { bajo_minimo, categoria, proveedor, search } = req.query;

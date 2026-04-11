@@ -65,16 +65,17 @@ function upsertClienteFromPedido({
     ? db.prepare(`
         SELECT id
         FROM clientes
-        WHERE codigo_externo IS NULL
-          AND nombre = ?
+        WHERE nombre = ?
           AND nif = ?
         LIMIT 1
       `).get(nombre, nif)
     : db.prepare(`
         SELECT id
         FROM clientes
-        WHERE codigo_externo IS NULL
-          AND nombre = ?
+        WHERE nombre = ?
+        ORDER BY
+          CASE WHEN nif IS NULL OR nif = '' THEN 0 ELSE 1 END,
+          id ASC
         LIMIT 1
       `).get(nombre);
 
@@ -103,23 +104,70 @@ function upsertClienteFromPedido({
     return existing.id;
   }
 
-  const result = db.prepare(`
-    INSERT INTO clientes (
-      nombre, telefono, email, direccion, cp, nif, zona_reparto, es_interno, origen, updated_at
-    )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pedido_manual', datetime('now','localtime'))
-  `).run(
-    nombre,
-    telefono,
-    email,
-    direccion,
-    cp,
-    nif,
-    zona,
-    interno
-  );
+  try {
+    const result = db.prepare(`
+      INSERT INTO clientes (
+        nombre, telefono, email, direccion, cp, nif, zona_reparto, es_interno, origen, updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pedido_manual', datetime('now','localtime'))
+    `).run(
+      nombre,
+      telefono,
+      email,
+      direccion,
+      cp,
+      nif,
+      zona,
+      interno
+    );
 
-  return result.lastInsertRowid;
+    return result.lastInsertRowid;
+  } catch (error) {
+    if (!String(error?.message || '').includes('UNIQUE constraint failed: clientes.nombre, clientes.nif')) {
+      throw error;
+    }
+
+    const fallback = nif
+      ? db.prepare(`
+          SELECT id
+          FROM clientes
+          WHERE nombre = ? AND nif = ?
+          LIMIT 1
+        `).get(nombre, nif)
+      : db.prepare(`
+          SELECT id
+          FROM clientes
+          WHERE nombre = ?
+          ORDER BY id ASC
+          LIMIT 1
+        `).get(nombre);
+
+    if (!fallback?.id) throw error;
+
+    db.prepare(`
+      UPDATE clientes
+      SET telefono = COALESCE(?, telefono),
+          email = COALESCE(?, email),
+          direccion = COALESCE(?, direccion),
+          cp = COALESCE(?, cp),
+          nif = COALESCE(?, nif),
+          zona_reparto = COALESCE(?, zona_reparto),
+          es_interno = ?,
+          updated_at = datetime('now','localtime')
+      WHERE id = ?
+    `).run(
+      telefono,
+      email,
+      direccion,
+      cp,
+      nif,
+      zona,
+      interno,
+      fallback.id
+    );
+
+    return fallback.id;
+  }
 }
 
 router.get('/', auth, (req, res) => {
@@ -412,6 +460,37 @@ router.put('/:id', auth, (req, res) => {
       'pedido',
       'Pedido retocado',
       `${req.user.nombre} ha actualizado ${pedido?.numero || 'un pedido'} de ${cliente_nombre}.`,
+      '/pedidos'
+    );
+  });
+
+  res.json({ ok: true });
+});
+
+router.delete('/:id', auth, (req, res) => {
+  const tienda = getTienda(req.user);
+  const pedido = db.prepare(`
+    SELECT id, numero, cliente_nombre, responsable_id
+    FROM pedidos
+    WHERE id = ? AND tienda = ?
+  `).get(req.params.id, tienda);
+
+  if (!pedido) return res.status(404).json({ error: 'Pedido no encontrado' });
+
+  db.prepare('DELETE FROM pedido_items WHERE pedido_id = ?').run(pedido.id);
+  db.prepare('DELETE FROM pedidos WHERE id = ? AND tienda = ?').run(pedido.id, tienda);
+
+  log('pedidos', pedido.id, 'borrar', req.user.id, {
+    numero: pedido.numero,
+    cliente_nombre: pedido.cliente_nombre,
+  });
+
+  teamRecipients(tienda, req.user.id, pedido.responsable_id).forEach((userId) => {
+    notify(
+      userId,
+      'pedido',
+      'Pedido borrado',
+      `${req.user.nombre} ha borrado ${pedido.numero} de ${pedido.cliente_nombre}.`,
       '/pedidos'
     );
   });

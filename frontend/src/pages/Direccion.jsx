@@ -122,17 +122,28 @@ export default function Direccion() {
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState([]);
   const [savingUserId, setSavingUserId] = useState(null);
+  const [designFeedback, setDesignFeedback] = useState([]);
+  const [feedbackLoading, setFeedbackLoading] = useState(true);
+  const [feedbackCode, setFeedbackCode] = useState('');
+  const [feedbackLookup, setFeedbackLookup] = useState(null);
+  const [checkingCode, setCheckingCode] = useState(false);
+  const [redeemingId, setRedeemingId] = useState(null);
 
   useEffect(() => {
     Promise.all([
       api.get('/direccion/overview'),
       api.get('/auth/users/manage'),
+      api.get('/direccion/design-feedback?limit=100'),
     ])
-      .then(([overviewResponse, usersResponse]) => {
+      .then(([overviewResponse, usersResponse, feedbackResponse]) => {
         setData(overviewResponse.data);
         setUsers(usersResponse.data || []);
+        setDesignFeedback(feedbackResponse.data.items || []);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setFeedbackLoading(false);
+      });
   }, []);
 
   async function updateUser(userId, patch) {
@@ -142,6 +153,31 @@ export default function Direccion() {
       setUsers((current) => current.map((item) => (item.id === userId ? updated : item)));
     } finally {
       setSavingUserId(null);
+    }
+  }
+
+  async function checkFeedbackCode() {
+    const code = String(feedbackCode || '').trim();
+    if (!code) return;
+    setCheckingCode(true);
+    try {
+      const { data: result } = await api.get(`/direccion/design-feedback?code=${encodeURIComponent(code)}`);
+      setFeedbackLookup(result);
+    } finally {
+      setCheckingCode(false);
+    }
+  }
+
+  async function toggleRedeem(item) {
+    setRedeemingId(item.id);
+    try {
+      const { data: result } = await api.patch(`/direccion/design-feedback/${item.id}/redeem`);
+      setDesignFeedback((current) => current.map((entry) => (entry.id === item.id ? result.item : entry)));
+      if (feedbackLookup?.item?.id === item.id) {
+        setFeedbackLookup((current) => ({ ...current, item: result.item, valid: result.item.reward_status === 'valid' }));
+      }
+    } finally {
+      setRedeemingId(null);
     }
   }
 
@@ -329,6 +365,114 @@ export default function Direccion() {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[0.78fr,1.22fr]">
+        <div className="card">
+          <div className="mb-4 flex items-center gap-2">
+            <ShieldCheck size={16} className="text-emerald-600" />
+            <h2 className="text-sm font-semibold text-slate-700">Validar codigo Design</h2>
+          </div>
+          <div className="space-y-3">
+            <input
+              value={feedbackCode}
+              onChange={(event) => setFeedbackCode(event.target.value.replace(/\D/g, '').slice(0, 5))}
+              className="input"
+              placeholder="Codigo de 5 digitos"
+              inputMode="numeric"
+            />
+            <button
+              type="button"
+              onClick={checkFeedbackCode}
+              disabled={checkingCode || feedbackCode.length < 5}
+              className="btn-primary w-full disabled:opacity-50"
+            >
+              {checkingCode ? 'Comprobando...' : 'Comprobar codigo'}
+            </button>
+
+            {feedbackLookup ? (
+              <div className={`rounded-2xl border px-4 py-4 ${feedbackLookup.valid ? 'border-emerald-200 bg-emerald-50' : 'border-red-200 bg-red-50'}`}>
+                <p className={`text-sm font-semibold ${feedbackLookup.valid ? 'text-emerald-700' : 'text-red-700'}`}>
+                  {feedbackLookup.valid ? 'Codigo valido' : 'Codigo no valido o ya usado'}
+                </p>
+                {feedbackLookup.item ? (
+                  <>
+                    <p className="mt-2 text-sm text-slate-700">{feedbackLookup.item.autor || 'tatuador'} · {feedbackLookup.item.selected_brand || 'sin marca'}</p>
+                    <p className="mt-1 text-xs text-slate-500">{String(feedbackLookup.item.feedback || '').slice(0, 220)}</p>
+                    <p className="mt-2 text-xs text-slate-500">Estado: {feedbackLookup.item.reward_status} · {Number(feedbackLookup.item.reward_amount || 0).toFixed(2)} EUR</p>
+                    {feedbackLookup.item.reward_code ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleRedeem(feedbackLookup.item)}
+                        disabled={redeemingId === feedbackLookup.item.id}
+                        className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700"
+                      >
+                        {redeemingId === feedbackLookup.item.id
+                          ? 'Guardando...'
+                          : feedbackLookup.item.reward_status === 'used'
+                            ? 'Marcar como valido otra vez'
+                            : 'Marcar como canjeado'}
+                      </button>
+                    ) : null}
+                  </>
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500">Aquí compruebas si una captura con código vale o ya se ha usado.</p>
+            )}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="mb-4 flex items-center gap-2">
+            <Link2 size={16} className="text-slate-700" />
+            <h2 className="text-sm font-semibold text-slate-700">Feedback de Design IA</h2>
+          </div>
+          {feedbackLoading ? (
+            <p className="text-sm text-slate-400">Cargando feedback...</p>
+          ) : !designFeedback.length ? (
+            <p className="text-sm text-slate-400">Aun no hay feedback guardado.</p>
+          ) : (
+            <div className="space-y-3">
+              {designFeedback.map((item) => (
+                <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800">{item.autor || 'tatuador'}</p>
+                      <p className="text-xs text-slate-500">{item.selected_brand || 'sin marca'} · {item.skin_tone || 'sin piel'} · {item.estilo_detectado || 'sin estilo'}</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {item.reward_code ? (
+                        <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">{item.reward_code}</span>
+                      ) : null}
+                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${item.reward_status === 'used' ? 'bg-red-100 text-red-700' : item.reward_status === 'valid' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                        {item.reward_status === 'used' ? 'Canjeado' : item.reward_status === 'valid' ? 'Valido' : 'Sin premio'}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-slate-700">{item.feedback}</p>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs text-slate-400">{String(item.created_at || '').replace('T', ' ')}</p>
+                    {item.reward_code ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleRedeem(item)}
+                        disabled={redeemingId === item.id}
+                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700"
+                      >
+                        {redeemingId === item.id
+                          ? 'Guardando...'
+                          : item.reward_status === 'used'
+                            ? 'Volver a valido'
+                            : 'Marcar canjeado'}
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

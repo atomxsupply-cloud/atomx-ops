@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Circle, Flag, Orbit, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import api from '../api/client';
 import Modal from '../components/Modal';
@@ -41,6 +41,12 @@ const FORM_DEFAULT = {
   prioridad: 'normal',
   fecha_limite: '',
   recurrente: false,
+};
+
+const NOTE_FORM_DEFAULT = {
+  contenido: '',
+  categoria: 'equipo',
+  prioridad: 'normal',
 };
 
 function normalizeName(value) {
@@ -151,6 +157,11 @@ export default function Tareas() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(FORM_DEFAULT);
   const [saving, setSaving] = useState(false);
+  const [teamTab, setTeamTab] = useState('tareas');
+  const [notas, setNotas] = useState([]);
+  const [notasLoading, setNotasLoading] = useState(false);
+  const [notaForm, setNotaForm] = useState(NOTE_FORM_DEFAULT);
+  const [savingNota, setSavingNota] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [estadoVista, setEstadoVista] = useState('pendiente');
   const [search, setSearch] = useState(querySearch);
@@ -193,9 +204,23 @@ export default function Tareas() {
     }
   }
 
+  async function loadNotas() {
+    setNotasLoading(true);
+    try {
+      const response = await api.get('/notas?estado=abierta');
+      setNotas(response.data || []);
+    } finally {
+      setNotasLoading(false);
+    }
+  }
+
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    if (teamTab === 'notas') loadNotas();
+  }, [teamTab]);
 
   async function toggleTarea(id, estadoActual) {
     const nuevoEstado = estadoActual === 'completada' ? 'pendiente' : 'completada';
@@ -225,6 +250,34 @@ export default function Tareas() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleNotaSubmit(event) {
+    event.preventDefault();
+    if (!notaForm.contenido.trim()) return;
+    setSavingNota(true);
+    try {
+      await api.post('/notas', {
+        contenido: notaForm.contenido.trim(),
+        categoria: notaForm.categoria,
+        prioridad: notaForm.prioridad,
+        estado: 'abierta',
+      });
+      setNotaForm(NOTE_FORM_DEFAULT);
+      await loadNotas();
+    } finally {
+      setSavingNota(false);
+    }
+  }
+
+  async function quickDoneNota(nota) {
+    await api.patch(`/notas/${nota.id}`, {
+      contenido: nota.contenido,
+      categoria: nota.categoria,
+      prioridad: nota.prioridad,
+      estado: nota.estado === 'hecha' ? 'abierta' : 'hecha',
+    });
+    await loadNotas();
   }
 
   const usersWithCounts = useMemo(() => {
@@ -280,16 +333,113 @@ export default function Tareas() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Centro de tareas</h1>
-          <p className="text-slate-500 text-sm">Carga visual por persona, prioridad y categoria</p>
+          <h1 className="text-2xl font-bold text-slate-800">Centro de equipo</h1>
+          <p className="text-slate-500 text-sm">Tareas por persona y acceso rápido a notas compartidas.</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
-          <Plus size={16} /> Nueva tarea
-        </button>
+        <div className="flex gap-2">
+          <div className="flex rounded-xl border border-slate-200 bg-white p-1">
+            {[
+              ['tareas', 'Tareas'],
+              ['notas', 'Notas'],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setTeamTab(value)}
+                className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${teamTab === value ? 'bg-slate-900 text-white' : 'text-slate-600'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2">
+            <Plus size={16} /> Nueva tarea
+          </button>
+        </div>
       </div>
 
+      {teamTab === 'notas' ? (
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[360px,1fr]">
+          <div className="card">
+            <form onSubmit={handleNotaSubmit} className="space-y-3">
+              <p className="text-sm font-semibold text-slate-800">Nota rápida de equipo</p>
+              <textarea
+                value={notaForm.contenido}
+                onChange={(event) => setNotaForm((current) => ({ ...current, contenido: event.target.value }))}
+                className="input h-28 resize-none"
+                placeholder="Escribe una nota útil para el equipo..."
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Categoria</label>
+                  <ChipSelect
+                    value={notaForm.categoria}
+                    onChange={(value) => setNotaForm((current) => ({ ...current, categoria: value }))}
+                    options={[
+                      { value: 'equipo', label: 'Equipo' },
+                      { value: 'stock', label: 'Stock' },
+                      { value: 'pedidos', label: 'Pedidos' },
+                      { value: 'clientes', label: 'Clientes' },
+                    ]}
+                  />
+                </div>
+                <div>
+                  <label className="label">Prioridad</label>
+                  <ChipSelect
+                    value={notaForm.prioridad}
+                    onChange={(value) => setNotaForm((current) => ({ ...current, prioridad: value }))}
+                    options={[
+                      { value: 'alta', label: 'Alta' },
+                      { value: 'normal', label: 'Normal' },
+                      { value: 'baja', label: 'Baja' },
+                    ]}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-between gap-2">
+                <Link to="/notas" className="btn-ghost">Abrir centro completo</Link>
+                <button type="submit" disabled={savingNota || !notaForm.contenido.trim()} className="btn-primary">
+                  {savingNota ? 'Guardando...' : 'Guardar nota'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div className="space-y-3">
+            {notasLoading ? <div className="card py-10 text-center text-sm text-slate-400">Cargando notas...</div> : null}
+            {!notasLoading && notas.length === 0 ? (
+              <div className="card py-10 text-center text-sm text-slate-400">No hay notas abiertas ahora mismo.</div>
+            ) : null}
+            {notas.slice(0, 20).map((nota) => (
+              <div key={nota.id} className={`rounded-2xl border p-4 ${Number(nota.pinned) === 1 ? 'border-amber-200 bg-amber-50/70' : 'border-slate-200 bg-white'}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="badge bg-slate-100 text-slate-600">{nota.categoria || 'general'}</span>
+                      <span className={`badge ${nota.prioridad === 'alta' ? 'bg-red-100 text-red-700' : nota.prioridad === 'baja' ? 'bg-slate-100 text-slate-500' : 'bg-blue-100 text-blue-700'}`}>
+                        {nota.prioridad || 'normal'}
+                      </span>
+                      {Number(nota.pinned) === 1 ? <span className="badge bg-amber-100 text-amber-700">Fijada</span> : null}
+                    </div>
+                    <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{nota.contenido}</p>
+                    <p className="mt-2 text-xs text-slate-400">{nota.autor || 'Equipo'}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => quickDoneNota(nota)}
+                    className="rounded-xl bg-slate-100 p-2 text-slate-600"
+                  >
+                    <CheckCircle2 size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+      <>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {isJuanfran ? (
           <AtomAvatar
@@ -451,6 +601,8 @@ export default function Tareas() {
           )}
         </div>
       </div>
+      </>
+      )}
 
       {showForm && (
         <Modal title="Nueva tarea" onClose={() => setShowForm(false)}>

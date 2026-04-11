@@ -3,14 +3,25 @@
 @tailwind utilities;
 
 @layer base {
+  html, body, #root {
+    min-height: 100%;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
   body {
     @apply bg-slate-50 text-slate-800 antialiased;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
 }
 
 @layer components {
   .btn {
-    @apply px-4 py-2 rounded-lg font-medium text-sm transition-colors;
+    @apply min-h-[44px] rounded-xl px-3 py-2.5 text-sm font-medium transition-colors sm:px-4;
   }
   .btn-primary {
     @apply btn bg-atomx-500 text-white hover:bg-atomx-600 active:bg-atomx-700;
@@ -22,13 +33,13 @@
     @apply btn bg-red-500 text-white hover:bg-red-600;
   }
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-slate-100 p-4;
+    @apply rounded-2xl border border-slate-100 bg-white p-3 shadow-sm sm:p-4;
   }
   .badge {
     @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
   }
   .input {
-    @apply w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-atomx-500 focus:border-transparent;
+    @apply w-full min-h-[44px] rounded-xl border border-slate-200 px-3 py-2.5 text-base focus:border-transparent focus:outline-none focus:ring-2 focus:ring-atomx-500 md:text-sm;
   }
   .label {
     @apply block text-xs font-medium text-slate-500 mb-1;

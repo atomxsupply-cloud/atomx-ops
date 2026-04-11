@@ -1,4 +1,5 @@
 const express = require('express');
+const { db } = require('../db');
 const { getEternalCatalog, searchEternalCatalog } = require('../services/eternalCatalog');
 const { getTintasCatalog, searchTintasCatalog } = require('../services/tintasCatalog');
 
@@ -6,6 +7,19 @@ const router = express.Router();
 
 function jsonError(res, status, error, detalle = undefined) {
   return res.status(status).json(detalle ? { error, detalle } : { error });
+}
+
+function normalizeShortText(value, fallback = '') {
+  return String(value || fallback).trim().slice(0, 120);
+}
+
+function generateRewardCode() {
+  for (let i = 0; i < 10; i += 1) {
+    const code = String(Math.floor(10000 + Math.random() * 90000));
+    const exists = db.prepare('SELECT id FROM design_feedback WHERE reward_code = ? LIMIT 1').get(code);
+    if (!exists) return code;
+  }
+  return `${Date.now()}`.slice(-5);
 }
 
 router.get('/eternal/catalogo', async (_req, res) => {
@@ -103,6 +117,102 @@ router.post('/design/analyze', async (req, res) => {
   } catch (error) {
     console.error('Error public design analyze:', error);
     return jsonError(res, 500, error.message || 'Error interno');
+  }
+});
+
+router.get('/design/feedback', (_req, res) => {
+  try {
+    const limit = Math.min(Math.max(parseInt(_req.query.limit || '5', 10), 1), 12);
+    const rows = db.prepare(`
+      SELECT id, autor, feedback, selected_brand, estilo_detectado, reward_code, reward_amount, created_at
+      FROM design_feedback
+      ORDER BY id DESC
+      LIMIT ?
+    `).all(limit);
+
+    res.json({
+      items: rows.map((row) => ({
+        ...row,
+        feedback_preview: String(row.feedback || '').slice(0, 180),
+      })),
+    });
+  } catch (error) {
+    console.error('Error feedback publico design:', error);
+    jsonError(res, 500, 'No he podido cargar el feedback');
+  }
+});
+
+router.post('/design/feedback', (req, res) => {
+  try {
+    const {
+      autor,
+      feedback,
+      selectedBrand,
+      skinTone,
+      analysis,
+    } = req.body || {};
+
+    const feedbackText = String(feedback || '').trim();
+    if (feedbackText.length < 8) {
+      return jsonError(res, 400, 'El feedback es demasiado corto');
+    }
+
+    const rewardEligible = feedbackText.length >= 100;
+    const rewardCode = rewardEligible ? generateRewardCode() : null;
+    const rewardAmount = rewardEligible ? 5 : 0;
+    const rewardStatus = rewardEligible ? 'valid' : 'none';
+
+    const result = db.prepare(`
+      INSERT INTO design_feedback (
+        tienda,
+        autor,
+        feedback,
+        selected_brand,
+        skin_tone,
+        estilo_detectado,
+        analysis_summary,
+        detected_colors_json,
+        recommended_inks_json,
+        reward_code,
+        reward_amount,
+        reward_status
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      'murcia',
+      normalizeShortText(autor, 'tatuador'),
+      feedbackText,
+      normalizeShortText(selectedBrand),
+      normalizeShortText(skinTone),
+      normalizeShortText(analysis?.estilo),
+      normalizeShortText(analysis?.descripcion_estilo, ''),
+      JSON.stringify(analysis?.colores_detectados || []),
+      JSON.stringify(analysis?.tintas_recomendadas || []),
+      rewardCode,
+      rewardAmount,
+      rewardStatus
+    );
+
+    res.status(201).json({
+      ok: true,
+      id: result.lastInsertRowid,
+      reward: rewardEligible
+        ? {
+            earned: true,
+            amount: rewardAmount,
+            code: rewardCode,
+            message: 'Has ganado 5 EUR en ATOM X por un feedback util.',
+          }
+        : {
+            earned: false,
+            amount: 0,
+            code: null,
+            message: 'Gracias. Si tu feedback supera 100 caracteres, te llevas 5 EUR en ATOM X.',
+          },
+    });
+  } catch (error) {
+    console.error('Error guardando feedback publico design:', error);
+    jsonError(res, 500, 'No he podido guardar el feedback');
   }
 });
 

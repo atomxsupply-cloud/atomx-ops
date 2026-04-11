@@ -38,3 +38,33 @@ Reglas de producto:
 - muy usable en movil
 - pensado para ayudar a vender y preparar mejor el trabajo del cliente
 
+## Criterio visual para recomendaciones de tinta
+
+La herramienta de color no debe comportarse como un selector rigido por pixel.
+Debe usar la tecnica como base, pero decidir con criterio visual de tatuador.
+
+Prioridades:
+1. lectura general de la pieza
+2. volumen y profundidad
+3. armonia entre zonas
+4. contraste util
+5. fidelidad al color base
+6. saturacion/intensidad
+
+Normas utiles:
+- no copiar solo el color visible
+- interpretar la funcion de cada zona: base, sombra, transicion, luz, linea o espacio de respiro
+- una sombra no siempre significa negro
+- una luz no siempre significa blanco
+- una transicion buena puede pesar mas que acertar el tono exacto
+- dos zonas parecidas pueden pedir tintas distintas si cumplen funciones distintas
+- si una excepcion mejora claramente la lectura final, permitirla
+
+Lo que debe evitar:
+- pintar por reglas literales
+- tratar cada zona como aislada
+- oscurecer por sistema todo lo que va atras
+- usar negro como solucion rapida para todo
+
+Frase central:
+- usar las reglas como conocimiento base, pero decidir como un ojo artistico entrenado
