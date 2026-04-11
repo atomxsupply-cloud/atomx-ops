@@ -213,6 +213,50 @@ export default function Direccion() {
         <MetricCard label="Tendencia 7 dias" value={`${pulso?.tendencia_pedidos_7d > 0 ? '+' : ''}${pulso?.tendencia_pedidos_7d || 0}`} help="Comparado con la semana anterior" icon={TrendingUp} tone="slate" />
       </div>
 
+      <div className="card">
+        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-2">
+            <Link2 size={16} className="text-orange-600" />
+            <h2 className="text-sm font-semibold text-slate-700">Feedback real de tatuadores en Design</h2>
+          </div>
+          <div className="text-xs text-slate-500">
+            {feedbackLoading ? 'Cargando...' : `${designFeedback.length} feedbacks visibles`}
+          </div>
+        </div>
+
+        {feedbackLoading ? (
+          <p className="text-sm text-slate-400">Cargando feedback de Design...</p>
+        ) : !designFeedback.length ? (
+          <p className="text-sm text-slate-400">Todavia no ha entrado ninguna opinion desde Design.</p>
+        ) : (
+          <div className="space-y-3">
+            {designFeedback.slice(0, 5).map((item) => (
+              <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800">{item.autor || 'Tatuador'}</p>
+                    <p className="text-xs text-slate-500">
+                      {item.selected_brand || 'Marca libre'}{item.estilo_detectado ? ` · ${item.estilo_detectado}` : ''}{item.skin_tone ? ` · ${item.skin_tone}` : ''}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    {item.reward_code ? (
+                      <span className={`rounded-full px-3 py-1 font-semibold ${item.reward_status === 'used' ? 'bg-slate-200 text-slate-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                        {item.reward_amount} EUR · {item.reward_code} · {item.reward_status === 'used' ? 'usado' : 'valido'}
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-slate-200 px-3 py-1 font-semibold text-slate-600">Sin premio</span>
+                    )}
+                    <span className="text-slate-400">{item.created_at}</span>
+                  </div>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-700">{String(item.feedback || '').slice(0, 320)}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr,0.8fr]">
         <div className="card">
           <div className="mb-4 flex items-center gap-2">

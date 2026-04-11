@@ -21,14 +21,15 @@ export function canAccessSection(user, section) {
   if (section === 'factusol') return profile === 'admin_full';
   if (section === 'buscador') return true;
   if (section === 'designia') return true;
+  if (section === 'stencil') return true;
   if (profile === 'admin_full') return true;
 
   const allowedByProfile = {
-    ops_core: new Set(['dashboard', 'buscador', 'designia', 'clientes', 'pedidos', 'tareas', 'notas', 'stock', 'caja', 'salidas', 'rutas', 'fichajes', 'prestashop']),
-    commercial_only: new Set(['dashboard', 'buscador', 'designia', 'tareas', 'rutas', 'fichajes', 'stock']),
-    store_commercial: new Set(['dashboard', 'buscador', 'designia', 'clientes', 'pedidos', 'tareas', 'notas', 'stock', 'caja', 'salidas', 'rutas', 'fichajes', 'prestashop']),
-    mallorca_store: new Set(['dashboard', 'buscador', 'designia', 'clientes', 'tareas', 'notas', 'stock', 'caja', 'salidas', 'fichajes', 'rutas']),
-    store_default: new Set(['dashboard', 'buscador', 'designia', 'tareas', 'notas', 'stock', 'caja', 'salidas', 'fichajes']),
+    ops_core: new Set(['dashboard', 'buscador', 'designia', 'stencil', 'clientes', 'pedidos', 'tareas', 'notas', 'stock', 'caja', 'salidas', 'rutas', 'fichajes', 'prestashop']),
+    commercial_only: new Set(['dashboard', 'buscador', 'designia', 'stencil', 'tareas', 'rutas', 'fichajes', 'stock']),
+    store_commercial: new Set(['dashboard', 'buscador', 'designia', 'stencil', 'clientes', 'pedidos', 'tareas', 'notas', 'stock', 'caja', 'salidas', 'rutas', 'fichajes', 'prestashop']),
+    mallorca_store: new Set(['dashboard', 'buscador', 'designia', 'stencil', 'clientes', 'tareas', 'notas', 'stock', 'caja', 'salidas', 'fichajes', 'rutas']),
+    store_default: new Set(['dashboard', 'buscador', 'designia', 'stencil', 'tareas', 'notas', 'stock', 'caja', 'salidas', 'fichajes']),
   };
 
   return allowedByProfile[profile]?.has(section) || false;

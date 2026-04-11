@@ -18,6 +18,7 @@ import Clientes from './pages/Clientes';
 import Factusol from './pages/Factusol';
 import Buscador from './pages/Buscador';
 import DesignIA from './pages/DesignIA';
+import StencilTool from './pages/StencilTool';
 import { canAccessSection } from './utils/permissions';
 
 function PrivateRoute({ children }) {
@@ -64,6 +65,7 @@ export default function App() {
             <Route path="direccion" element={<SectionRoute section="direccion"><Direccion /></SectionRoute>} />
             <Route path="buscador" element={<SectionRoute section="buscador"><Buscador /></SectionRoute>} />
             <Route path="design-ia" element={<SectionRoute section="designia"><DesignIA /></SectionRoute>} />
+            <Route path="stencil" element={<SectionRoute section="stencil"><StencilTool /></SectionRoute>} />
             <Route path="clientes" element={<SectionRoute section="clientes"><Clientes /></SectionRoute>} />
             <Route path="factusol" element={<SectionRoute section="factusol"><Factusol /></SectionRoute>} />
           </Route>

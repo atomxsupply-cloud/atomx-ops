@@ -157,9 +157,9 @@ router.post('/design/feedback', (req, res) => {
       return jsonError(res, 400, 'El feedback es demasiado corto');
     }
 
-    const rewardEligible = feedbackText.length >= 100;
+    const rewardAmount = feedbackText.length >= 500 ? 8 : feedbackText.length >= 250 ? 5 : 0;
+    const rewardEligible = rewardAmount > 0;
     const rewardCode = rewardEligible ? generateRewardCode() : null;
-    const rewardAmount = rewardEligible ? 5 : 0;
     const rewardStatus = rewardEligible ? 'valid' : 'none';
 
     const result = db.prepare(`
@@ -201,13 +201,13 @@ router.post('/design/feedback', (req, res) => {
             earned: true,
             amount: rewardAmount,
             code: rewardCode,
-            message: 'Has ganado 5 EUR en ATOM X por un feedback util.',
+            message: `Has ganado ${rewardAmount} EUR en ATOM X por un feedback util.`,
           }
         : {
             earned: false,
             amount: 0,
             code: null,
-            message: 'Gracias. Si tu feedback supera 100 caracteres, te llevas 5 EUR en ATOM X.',
+            message: 'Gracias. Si tu feedback supera 250 caracteres, te llevas 5 EUR. Si supera 500, te llevas 8 EUR.',
           },
     });
   } catch (error) {

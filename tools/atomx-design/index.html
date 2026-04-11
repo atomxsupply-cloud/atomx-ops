@@ -23,6 +23,77 @@ body {
   min-height:100vh; max-width:430px; margin:0 auto;
   overflow-x:hidden;
 }
+.app-shell.locked {
+  filter:blur(10px);
+  pointer-events:none;
+  user-select:none;
+}
+.access-overlay {
+  position:fixed; inset:0; z-index:300;
+  background:rgba(0,0,0,0.82);
+  display:none; align-items:center; justify-content:center;
+  padding:18px;
+}
+.access-overlay.show { display:flex; }
+.access-card {
+  width:min(100%, 360px);
+  background:#0f0f0f;
+  border:1px solid var(--border);
+  border-radius:24px;
+  padding:22px 18px 18px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.45);
+}
+.access-kicker {
+  font-family:'Space Mono',monospace;
+  font-size:10px; letter-spacing:2px; color:var(--accent);
+  text-transform:uppercase;
+}
+.access-title {
+  font-size:22px; font-weight:700; margin:8px 0 8px;
+}
+.access-text {
+  font-size:13px; color:var(--muted); line-height:1.5; margin-bottom:14px;
+}
+.access-input {
+  width:100%; margin-top:10px;
+  background:var(--card); border:1px solid var(--border);
+  color:var(--text); border-radius:14px;
+  padding:14px 14px; font-size:16px; outline:none;
+}
+.access-input:focus { border-color:var(--accent-soft); }
+.access-error {
+  min-height:18px; margin-top:10px;
+  color:#ff8a65; font-size:12px;
+}
+.access-btn {
+  width:100%; margin-top:10px;
+  border:none; border-radius:14px;
+  background:linear-gradient(135deg, #ff4d00, #ff7a18);
+  color:white; padding:14px 16px; font-size:15px; font-weight:700;
+}
+.online-strip {
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:8px 16px 0;
+}
+.online-list {
+  display:flex; flex-wrap:wrap; gap:6px;
+}
+.online-pill {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 9px; border-radius:999px;
+  border:1px solid rgba(255,255,255,0.08);
+  background:rgba(255,255,255,0.03);
+  font-size:10px; color:var(--muted);
+  font-family:'Space Mono',monospace;
+}
+.online-dot {
+  width:6px; height:6px; border-radius:999px; background:var(--green);
+  box-shadow:0 0 8px rgba(0,230,118,0.5);
+}
+.session-chip {
+  font-family:'Space Mono',monospace;
+  font-size:10px; color:var(--accent);
+}
 
 /* HEADER */
 .header {
@@ -39,6 +110,22 @@ body {
   color:var(--accent); background:var(--accent-dim);
   border:1px solid var(--accent-soft);
   padding:3px 8px; border-radius:20px; letter-spacing:1px;
+}
+.header-actions {
+  display:flex; align-items:center; gap:8px;
+}
+.header-tool-btn {
+  width:34px; height:34px;
+  border-radius:12px;
+  border:1px solid var(--accent-soft);
+  background:rgba(255,77,0,0.08);
+  color:var(--accent);
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; cursor:pointer;
+}
+.header-tool-btn.active {
+  background:rgba(255,77,0,0.18);
+  box-shadow:0 0 0 1px rgba(255,77,0,0.18) inset;
 }
 .counter-wrap {
   text-align:center; padding:8px 20px 0;
@@ -172,6 +259,272 @@ body {
 }
 .brand-hint { margin-top:6px; font-size:11px; color:var(--muted); line-height:1.4; }
 
+/* PALETTE IMPORT */
+.palette-card {
+  margin:0 0 14px;
+  border:1px solid var(--border);
+  background:rgba(255,255,255,0.02);
+  border-radius:18px;
+  overflow:hidden;
+}
+.palette-head {
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:12px 14px;
+  cursor:pointer;
+}
+.palette-kicker {
+  font-family:'Space Mono',monospace;
+  font-size:9px; letter-spacing:1.8px; color:var(--accent);
+  text-transform:uppercase;
+}
+.palette-title {
+  font-size:13px; font-weight:700; color:var(--text); margin-top:3px;
+}
+.palette-body {
+  display:none;
+  border-top:1px solid var(--border);
+  padding:12px 14px 14px;
+}
+.palette-body.open { display:block; }
+.palette-text {
+  font-size:11px; color:var(--muted); line-height:1.5; margin-bottom:10px;
+}
+.palette-actions {
+  display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center;
+}
+.palette-upload-btn, .palette-clear-btn {
+  border:none; background:var(--accent); color:#fff;
+  border-radius:12px; padding:10px 12px;
+  font-family:'Space Mono',monospace; font-size:10px; font-weight:700; letter-spacing:1px;
+  cursor:pointer;
+}
+.palette-clear-btn {
+  background:rgba(255,255,255,0.05);
+  color:var(--muted);
+  border:1px solid var(--border);
+}
+.palette-color-input {
+  width:42px; height:42px; padding:0;
+  border:none; background:transparent; cursor:pointer;
+}
+.palette-file-input { display:none; }
+.palette-status {
+  margin-top:10px; font-size:10px; color:var(--dim); font-family:'Space Mono',monospace;
+}
+.palette-selected {
+  margin-top:10px;
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px;
+  border-radius:14px;
+  background:rgba(255,255,255,0.03);
+  border:1px solid rgba(255,255,255,0.06);
+}
+.palette-selected-color {
+  width:24px; height:24px; border-radius:999px;
+  border:2px solid rgba(255,255,255,0.7);
+}
+.palette-selected-text {
+  font-size:11px; color:var(--muted); line-height:1.4;
+}
+.palette-grid {
+  margin-top:10px;
+  display:grid; grid-template-columns:repeat(4,1fr); gap:8px;
+}
+.palette-swatch {
+  border:1px solid var(--border);
+  border-radius:14px; padding:8px; background:var(--card);
+  cursor:pointer;
+}
+.palette-swatch.active {
+  border-color:rgba(255,77,0,0.45);
+  box-shadow:0 0 0 1px rgba(255,77,0,0.18) inset;
+}
+.palette-swatch-color {
+  width:100%; height:42px; border-radius:10px;
+  border:1px solid rgba(255,255,255,0.1);
+}
+.palette-swatch-name {
+  margin-top:6px; font-size:9px; color:var(--text); font-weight:700;
+}
+.palette-swatch-meta {
+  margin-top:2px; font-size:8px; color:var(--muted); font-family:'Space Mono',monospace;
+}
+
+/* FEEDBACK CHAT */
+.feedback-card {
+  margin:0 0 14px;
+  border:1px solid var(--border);
+  background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  border-radius:18px;
+  overflow:hidden;
+}
+.feedback-head {
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:12px 14px;
+  cursor:pointer;
+}
+.feedback-kicker {
+  font-family:'Space Mono',monospace;
+  font-size:9px; letter-spacing:1.8px; color:var(--accent);
+  text-transform:uppercase;
+}
+.feedback-title {
+  font-size:13px; font-weight:700; color:var(--text); margin-top:3px;
+}
+.feedback-toggle {
+  border:1px solid var(--border);
+  background:var(--card);
+  color:var(--muted);
+  border-radius:999px;
+  width:28px; height:28px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:14px;
+}
+.feedback-body {
+  display:none;
+  border-top:1px solid var(--border);
+  padding:12px 14px 14px;
+}
+.feedback-body.open { display:block; }
+.feedback-msg {
+  border:1px solid rgba(255,255,255,0.06);
+  background:rgba(255,255,255,0.03);
+  border-radius:14px;
+  padding:9px 10px;
+}
+.feedback-meta {
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  font-size:9px; color:var(--dim); font-family:'Space Mono',monospace; letter-spacing:1px;
+  margin-bottom:4px;
+}
+.feedback-text {
+  font-size:11px; line-height:1.45; color:var(--muted);
+}
+.feedback-empty {
+  font-size:11px; color:var(--dim); line-height:1.5; margin-bottom:10px;
+}
+.feedback-input {
+  width:100%;
+  min-height:82px;
+  border:1px solid var(--border);
+  background:var(--card);
+  color:var(--text);
+  border-radius:14px;
+  padding:12px;
+  resize:none;
+  outline:none;
+  font-size:13px;
+}
+.feedback-input:focus { border-color:var(--accent-soft); }
+.feedback-row {
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  margin-top:10px;
+}
+.feedback-count {
+  font-size:10px; color:var(--muted); font-family:'Space Mono',monospace;
+}
+.feedback-send {
+  border:none; background:var(--accent); color:#fff;
+  border-radius:12px; padding:10px 14px;
+  font-family:'Space Mono',monospace; font-size:11px; font-weight:700; letter-spacing:1.4px;
+  cursor:pointer;
+}
+.feedback-send:disabled { opacity:0.45; cursor:not-allowed; }
+.feedback-reward {
+  display:none; margin-top:10px;
+  border:1px solid rgba(0,230,118,0.24);
+  background:rgba(0,230,118,0.08);
+  border-radius:14px; padding:12px;
+}
+.feedback-reward.show { display:block; }
+.feedback-reward-title {
+  font-size:11px; font-weight:700; color:var(--green); margin-bottom:4px;
+}
+.feedback-reward-code {
+  display:inline-flex; align-items:center; gap:8px;
+  margin-top:8px;
+  background:#0c1511;
+  border:1px dashed rgba(0,230,118,0.35);
+  color:#dfffea;
+  border-radius:12px;
+  padding:8px 10px;
+  font-family:'Space Mono',monospace; font-size:18px; font-weight:700; letter-spacing:3px;
+}
+.feedback-reward-copy {
+  border:none; background:transparent; color:var(--green);
+  font-size:10px; font-family:'Space Mono',monospace; cursor:pointer;
+}
+
+/* ACCESS OVERLAY */
+.access-overlay {
+  position:fixed; inset:0; z-index:1200;
+  background:rgba(0,0,0,0.96);
+  display:flex; align-items:center; justify-content:center;
+  padding:24px;
+}
+.access-box {
+  width:100%;
+  max-width:380px;
+  background:#111;
+  border:1px solid #1e1e1e;
+  border-radius:24px;
+  padding:28px 22px 24px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.45);
+}
+.access-kicker {
+  font-family:'Space Mono',monospace;
+  font-size:10px;
+  color:var(--accent);
+  letter-spacing:2px;
+  margin-bottom:10px;
+}
+.access-title {
+  font-size:24px;
+  font-weight:700;
+  line-height:1.1;
+  margin-bottom:8px;
+}
+.access-sub {
+  font-size:13px;
+  color:var(--muted);
+  line-height:1.5;
+  margin-bottom:18px;
+}
+.access-input {
+  width:100%;
+  background:#0c0c0c;
+  border:1px solid var(--border);
+  color:var(--text);
+  padding:14px 14px;
+  border-radius:14px;
+  font-size:15px;
+  outline:none;
+  margin-bottom:12px;
+}
+.access-input:focus {
+  border-color:var(--accent-soft);
+  box-shadow:0 0 0 1px rgba(255,77,0,0.18) inset;
+}
+.access-btn {
+  width:100%;
+  border:none;
+  background:var(--accent);
+  color:#fff;
+  border-radius:14px;
+  padding:14px;
+  font-family:'Space Mono',monospace;
+  font-size:14px;
+  font-weight:700;
+  letter-spacing:2px;
+  cursor:pointer;
+}
+.access-error {
+  display:none;
+  margin-top:12px;
+  font-size:12px;
+  color:#ff9a76;
+}
+
 /* CONSENT OVERLAY */
 .consent-overlay {
   position:fixed; inset:0; z-index:999;
@@ -235,6 +588,11 @@ input:disabled + .toggle-slider { opacity:0.5; cursor:not-allowed; }
   cursor:pointer; transition:color 0.2s;
 }
 .consent-btn-reject:hover { color:#888; }
+
+/* Override final del acceso actual */
+.access-overlay { display:none !important; }
+.access-overlay.show { display:flex !important; }
+.access-error { display:block !important; }
 
 /* UPLOAD ZONE */
 .upload-zone {
@@ -523,61 +881,18 @@ input:disabled + .toggle-slider { opacity:0.5; cursor:not-allowed; }
 </head>
 <body>
 
-<!-- CONSENT OVERLAY -->
-<div class="consent-overlay" id="consentOverlay" style="display:none">
-  <div class="consent-box">
-    <div class="consent-logo">ATOM X</div>
-    <div class="consent-title">Antes de empezar</div>
-    <p class="consent-text">
-      Esta app analiza imagenes de disenos de tatuaje usando inteligencia artificial para recomendarte las tintas del catalogo adecuadas.
-      Necesitamos tu consentimiento para algunas funciones. Puedes aceptarlo todo o elegir que permites.
-    </p>
-
-    <div class="consent-toggle">
-      <div class="consent-toggle-info">
-        <strong>Funciones esenciales <span class="consent-required-tag">NECESARIO</span></strong>
-        <span>Analisis de imagen y recomendaciones de tintas. Sin esto la app no funciona.</span>
-      </div>
-      <label class="toggle-switch">
-        <input type="checkbox" checked disabled>
-        <span class="toggle-slider"></span>
-      </label>
-    </div>
-
-    <div class="consent-toggle">
-      <div class="consent-toggle-info">
-        <strong>Guardar historial de analisis</strong>
-        <span>Guardar tus resultados para consultarlos mas adelante.</span>
-      </div>
-      <label class="toggle-switch">
-        <input type="checkbox" id="consentHistory">
-        <span class="toggle-slider"></span>
-      </label>
-    </div>
-
-    <div class="consent-toggle">
-      <div class="consent-toggle-info">
-        <strong>Notificaciones</strong>
-        <span>Avisos sobre nuevas tintas, ofertas o novedades de ATOM X.</span>
-      </div>
-      <label class="toggle-switch">
-        <input type="checkbox" id="consentNotifications">
-        <span class="toggle-slider"></span>
-      </label>
-    </div>
-
-    <p class="consent-text" style="margin-top:20px;font-size:12px">
-      Al continuar aceptas nuestros
-      <a href="/legal/terminos.html" target="_blank">Terminos y Condiciones</a>,
-      <a href="/legal/privacidad.html" target="_blank">Politica de Privacidad</a> y
-      <a href="/legal/cookies.html" target="_blank">Politica de Cookies</a>.
-      Puedes cambiar tus preferencias en cualquier momento desde Ajustes.
-    </p>
-
-    <button class="consent-btn-accept" onclick="acceptConsent()">ACEPTAR Y CONTINUAR</button>
-    <button class="consent-btn-reject" onclick="rejectOptional()">Solo funciones esenciales</button>
+<div class="access-overlay" id="access-overlay">
+  <div class="access-card">
+    <div class="access-kicker">ATOM X DESIGN</div>
+    <div class="access-title">Entra para probar la herramienta</div>
+    <div class="access-text">Pon tu nombre para entrar. Asi vemos quien esta dentro y el feedback se guarda con autor real.</div>
+    <input class="access-input" id="access-name" type="text" maxlength="32" placeholder="Tu nombre">
+    <div class="access-error" id="access-error"></div>
+    <button class="access-btn" type="button" onclick="enterDesign()">Entrar a Design</button>
   </div>
 </div>
+
+<div class="app-shell" id="app-shell">
 
 <!-- HEADER -->
 <div class="header">
@@ -585,13 +900,22 @@ input:disabled + .toggle-slider { opacity:0.5; cursor:not-allowed; }
     <div class="logo-text">ATOM X</div>
     <div class="logo-sub">COLOR MATCHER</div>
   </div>
-  <div class="header-badge">ATOM X Supply</div>
+  <div class="header-actions">
+    <button class="header-tool-btn" id="palette-tool-btn" type="button" onclick="togglePalettePanel()" title="Importar paleta">🎨</button>
+    <div class="header-badge">Design interno</div>
+  </div>
+</div>
+
+<div class="online-strip">
+  <div class="online-list" id="online-list"></div>
+  <div class="session-chip" id="session-chip"></div>
 </div>
 
 <!-- CONTADOR -->
 <div class="counter-wrap">
   <div class="counter-num" id="counter-num">0</div>
   <div class="counter-label">tatuadores a los que hemos ayudado con su diseno</div>
+</div>
 </div>
 
 <!-- ATOMX CHARACTER -->
@@ -671,6 +995,64 @@ input:disabled + .toggle-slider { opacity:0.5; cursor:not-allowed; }
       </select>
     </div>
     <div class="brand-hint" id="brand-hint">Colores por marca elegida. Negros y blancos los decide ATOM X en automatico.</div>
+  </div>
+
+  <div class="palette-card">
+    <div class="palette-head" onclick="togglePalettePanel()">
+      <div>
+        <div class="palette-kicker">Paleta / Procreate</div>
+        <div class="palette-title">Importa una imagen de paleta o marca un color manual</div>
+      </div>
+      <button class="feedback-toggle" id="palette-toggle" type="button">+</button>
+    </div>
+    <div class="palette-body" id="palette-body">
+      <div class="palette-text">Fase 1: subes una captura de paleta o tocas el color manual y ATOM X te deja los tonos detectados listos. Luego esto lo conectaremos con la tinta exacta.</div>
+      <div class="palette-actions">
+        <button class="palette-upload-btn" type="button" onclick="document.getElementById('palette-file-input').click()">Importar paleta</button>
+        <input class="palette-color-input" id="palette-color-input" type="color" value="#ff4d00" onchange="setManualPaletteColor(this.value)">
+      </div>
+      <input class="palette-file-input" id="palette-file-input" type="file" accept="image/*" onchange="handlePaletteFile(event)">
+      <div class="palette-status" id="palette-status">Sin paleta cargada todavia.</div>
+      <div class="palette-selected" id="palette-selected" style="display:none">
+        <div class="palette-selected-color" id="palette-selected-color"></div>
+        <div class="palette-selected-text" id="palette-selected-text"></div>
+      </div>
+      <div class="palette-grid" id="palette-grid"></div>
+      <button class="palette-clear-btn" type="button" onclick="clearPaletteSamples()">Limpiar paleta</button>
+    </div>
+  </div>
+
+  <div class="feedback-card">
+    <div class="feedback-head" onclick="toggleFeedbackPanel()">
+      <div>
+        <div class="feedback-kicker">Feedback tatuador</div>
+        <div class="feedback-title">Dinos rapido que mejorar y donde falla</div>
+      </div>
+      <button class="feedback-toggle" id="feedback-toggle" type="button">+</button>
+    </div>
+    <div class="feedback-body" id="feedback-body">
+      <div class="feedback-empty" id="feedback-empty">
+        Si algo falla, se queda corto o ves una mejor tinta, dilo aqui. Todo esto nos sirve para seguir afinando ATOM X.
+      </div>
+      <textarea
+        class="feedback-input"
+        id="feedback-input"
+        placeholder="Ejemplo: aqui se ha ido demasiado a Eternal, el amarillo tendria que ser mas limpio y esta sombra pide mas transicion..."
+        oninput="updateFeedbackCount()"
+      ></textarea>
+      <div class="feedback-row">
+        <div class="feedback-count" id="feedback-count">0 caracteres · +250 = 5 EUR · +500 = 8 EUR</div>
+        <button class="feedback-send" id="feedback-send" type="button" onclick="submitFeedback()">Enviar feedback</button>
+      </div>
+      <div class="feedback-reward" id="feedback-reward">
+        <div class="feedback-reward-title" id="feedback-reward-title">Has ganado 5 EUR en ATOM X</div>
+        <div style="font-size:12px; color:var(--muted); line-height:1.45" id="feedback-reward-message"></div>
+        <div class="feedback-reward-code">
+          <span id="feedback-reward-code">00000</span>
+          <button class="feedback-reward-copy" type="button" onclick="copyRewardCode()">copiar</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- UPLOAD -->
@@ -951,41 +1333,6 @@ function onBrandChange(value) {
   }
 }
 
-// â”€â”€ CONTADOR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// â”€â”€ CONSENTIMIENTO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function initConsent() {
-  const consent = localStorage.getItem('atomx_consent');
-  if (!consent) {
-    document.getElementById('consentOverlay').style.display = 'flex';
-  }
-}
-
-function acceptConsent() {
-  const history = document.getElementById('consentHistory').checked;
-  const notifications = document.getElementById('consentNotifications').checked;
-  localStorage.setItem('atomx_consent', JSON.stringify({
-    version: '1.0',
-    date: new Date().toISOString(),
-    essential: true,
-    history,
-    notifications
-  }));
-  document.getElementById('consentOverlay').style.display = 'none';
-}
-
-function rejectOptional() {
-  localStorage.setItem('atomx_consent', JSON.stringify({
-    version: '1.0',
-    date: new Date().toISOString(),
-    essential: true,
-    history: false,
-    notifications: false
-  }));
-  document.getElementById('consentOverlay').style.display = 'none';
-}
-
-initConsent();
-
 function initCounter() {
   const n = parseInt(localStorage.getItem('atomx_count') || '0');
   document.getElementById('counter-num').textContent = n;
@@ -1000,6 +1347,91 @@ function incrementCounter() {
 }
 initCounter();
 setBrandUI();
+
+function getPresenceEndpoint() {
+  return '/api/presence';
+}
+
+function getSessionUser() {
+  try {
+    const raw = localStorage.getItem('atomx_design_session');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function setSessionUser(name) {
+  localStorage.setItem('atomx_design_session', JSON.stringify({ name, at: Date.now() }));
+}
+
+function renderPresence(items = []) {
+  const wrap = document.getElementById('online-list');
+  const chip = document.getElementById('session-chip');
+  const me = getSessionUser();
+  if (chip) chip.textContent = me?.name ? `Dentro: ${me.name}` : '';
+  if (!wrap) return;
+  if (!items.length) {
+    wrap.innerHTML = '<span class="online-pill"><span class="online-dot"></span>solo tu por ahora</span>';
+    return;
+  }
+  wrap.innerHTML = items.slice(0, 6).map((item) => `
+    <span class="online-pill"><span class="online-dot"></span>${String(item.name || 'alguien').replace(/</g, '&lt;')}</span>
+  `).join('');
+}
+
+async function sendPresenceHeartbeat() {
+  const me = getSessionUser();
+  if (!me?.name) return;
+  try {
+    await fetch(getPresenceEndpoint(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: me.name }),
+    });
+    const response = await fetch(`${getPresenceEndpoint()}?t=${Date.now()}`);
+    const data = await response.json();
+    renderPresence(data.items || []);
+  } catch (error) {
+    console.warn('No he podido actualizar presencia:', error.message);
+  }
+}
+
+function startPresenceLoop() {
+  sendPresenceHeartbeat();
+  if (!window.__atomxPresenceLoop) {
+    window.__atomxPresenceLoop = window.setInterval(sendPresenceHeartbeat, 30000);
+  }
+}
+
+function bootAccess() {
+  const overlay = document.getElementById('access-overlay');
+  const shell = document.getElementById('app-shell');
+  const me = getSessionUser();
+  if (me?.name) {
+    overlay?.classList.remove('show');
+    shell?.classList.remove('locked');
+    startPresenceLoop();
+    return;
+  }
+  overlay?.classList.add('show');
+  shell?.classList.add('locked');
+}
+
+function enterDesign() {
+  const nameInput = document.getElementById('access-name');
+  const error = document.getElementById('access-error');
+  const name = String(nameInput?.value || '').trim().slice(0, 32);
+  if (!name) {
+    if (error) error.textContent = 'Pon tu nombre para entrar.';
+    return;
+  }
+  setSessionUser(name);
+  if (error) error.textContent = '';
+  document.getElementById('access-overlay')?.classList.remove('show');
+  document.getElementById('app-shell')?.classList.remove('locked');
+  startPresenceLoop();
+}
 
 function normalizeText(value) {
   return String(value || '')
@@ -1145,6 +1577,11 @@ function getAnalyzeEndpoint() {
   return base ? `${base}/design/analyze` : '/api/analyze';
 }
 
+function getFeedbackEndpoint() {
+  const base = getOpsBaseUrl();
+  return base ? `${base}/design/feedback` : '/api/feedback';
+}
+
 function applyRemoteCatalog(payload) {
   if (!payload?.categories?.length) return false;
 
@@ -1197,6 +1634,207 @@ async function loadCatalogoRemoto() {
 
 loadCatalogoRemoto();
 
+function toggleFeedbackPanel(forceValue = null) {
+  feedbackOpen = typeof forceValue === 'boolean' ? forceValue : !feedbackOpen;
+  const body = document.getElementById('feedback-body');
+  const toggle = document.getElementById('feedback-toggle');
+  if (body) body.classList.toggle('open', feedbackOpen);
+  if (toggle) toggle.textContent = feedbackOpen ? '−' : '+';
+}
+
+function updateFeedbackCount() {
+  const value = String(document.getElementById('feedback-input')?.value || '');
+  const countEl = document.getElementById('feedback-count');
+  const sendBtn = document.getElementById('feedback-send');
+  if (countEl) {
+    let rewardText = '+250 = 5 EUR · +500 = 8 EUR';
+    if (value.length >= 500) rewardText = 'listo: te llevas 8 EUR';
+    else if (value.length >= 250) rewardText = 'listo: te llevas 5 EUR';
+    countEl.textContent = `${value.length} caracteres · ${rewardText}`;
+  }
+  if (sendBtn) sendBtn.disabled = value.trim().length < 8;
+}
+
+function togglePalettePanel(forceValue = null) {
+  paletteOpen = typeof forceValue === 'boolean' ? forceValue : !paletteOpen;
+  const body = document.getElementById('palette-body');
+  const toggle = document.getElementById('palette-toggle');
+  const tool = document.getElementById('palette-tool-btn');
+  if (body) body.classList.toggle('open', paletteOpen);
+  if (toggle) toggle.textContent = paletteOpen ? '−' : '+';
+  if (tool) tool.classList.toggle('active', paletteOpen);
+}
+
+function renderPaletteSelected() {
+  const box = document.getElementById('palette-selected');
+  const colorEl = document.getElementById('palette-selected-color');
+  const textEl = document.getElementById('palette-selected-text');
+  if (!box || !colorEl || !textEl) return;
+  if (!selectedPaletteHex) {
+    box.style.display = 'none';
+    return;
+  }
+  const selected = paletteSamples.find((item) => item.hex === selectedPaletteHex) || { hex: selectedPaletteHex, name: selectedPaletteHex, source: 'manual' };
+  colorEl.style.background = selected.hex;
+  textEl.innerHTML = `<strong style="color:var(--text)">${selected.name || selected.hex}</strong><br><span>${selected.hex} · ${selected.source === 'manual' ? 'manual' : 'imagen paleta'}</span>`;
+  box.style.display = 'flex';
+}
+
+function renderPaletteSamples() {
+  const grid = document.getElementById('palette-grid');
+  const status = document.getElementById('palette-status');
+  if (!grid || !status) return;
+  if (!paletteSamples.length) {
+    grid.innerHTML = '';
+    status.textContent = 'Sin paleta cargada todavia.';
+    renderPaletteSelected();
+    return;
+  }
+  status.textContent = `${paletteSamples.length} colores listos. Toca uno para dejarlo marcado.`;
+  grid.innerHTML = paletteSamples.map((item, index) => `
+    <button class="palette-swatch ${selectedPaletteHex === item.hex ? 'active' : ''}" type="button" onclick="selectPaletteColor('${item.hex}', ${index})">
+      <div class="palette-swatch-color" style="background:${item.hex}"></div>
+      <div class="palette-swatch-name">${String(item.name || 'Color').replace(/</g, '&lt;')}</div>
+      <div class="palette-swatch-meta">${item.hex}</div>
+    </button>
+  `).join('');
+  renderPaletteSelected();
+}
+
+function selectPaletteColor(hex, index = -1) {
+  selectedPaletteHex = hex;
+  renderPaletteSamples();
+  const sample = paletteSamples[index] || paletteSamples.find((item) => item.hex === hex);
+  const bubble = document.getElementById('bubble-text');
+  if (bubble && sample) {
+    bubble.textContent = `Color marcado: ${sample.name || sample.hex}. Luego esto lo cruzaremos con la tinta exacta en OPS.`;
+  }
+}
+
+function clearPaletteSamples() {
+  paletteSamples = [];
+  selectedPaletteHex = '';
+  const input = document.getElementById('palette-file-input');
+  if (input) input.value = '';
+  renderPaletteSamples();
+}
+
+function setManualPaletteColor(value) {
+  const hex = String(value || '').trim();
+  if (!hex) return;
+  const existing = paletteSamples.find((item) => item.hex.toLowerCase() === hex.toLowerCase());
+  if (!existing) {
+    paletteSamples.unshift({
+      hex,
+      name: 'Color manual',
+      source: 'manual',
+    });
+    paletteSamples = paletteSamples.slice(0, 12);
+  }
+  selectedPaletteHex = hex;
+  togglePalettePanel(true);
+  renderPaletteSamples();
+}
+
+function handlePaletteFile(e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = createAnalysisCanvas(img);
+      const colors = getDominantColors(canvas, 10);
+      paletteSamples = colors.map((color, index) => ({
+        hex: color.hex,
+        name: color.nombre || `Color ${index + 1}`,
+        source: 'imagen',
+      }));
+      selectedPaletteHex = paletteSamples[0]?.hex || '';
+      togglePalettePanel(true);
+      renderPaletteSamples();
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function showFeedbackReward(reward) {
+  const box = document.getElementById('feedback-reward');
+  const title = document.getElementById('feedback-reward-title');
+  const message = document.getElementById('feedback-reward-message');
+  const code = document.getElementById('feedback-reward-code');
+  if (!box || !title || !message || !code) return;
+
+  if (!reward?.earned) {
+    box.classList.remove('show');
+    return;
+  }
+
+  title.textContent = `Has ganado ${reward.amount || 0} EUR en ATOM X`;
+  message.textContent = reward.message || 'Guardado. Haz una captura y mandasela a Juanfran.';
+  code.textContent = reward.code || '00000';
+  box.classList.add('show');
+}
+
+async function submitFeedback() {
+  const input = document.getElementById('feedback-input');
+  const sendBtn = document.getElementById('feedback-send');
+  const rewardBox = document.getElementById('feedback-reward');
+  const feedback = String(input?.value || '').trim();
+  if (feedback.length < 8) return;
+
+  if (sendBtn) {
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Guardando...';
+  }
+  if (rewardBox) rewardBox.classList.remove('show');
+
+  try {
+    const response = await fetch(getFeedbackEndpoint(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        autor: getSessionUser()?.name || 'tatuador',
+        feedback,
+        selectedBrand: brandInfo[selectedBrandMode]?.label || selectedBrandMode,
+        skinTone: skinInfo[selectedSkin]?.nombre || '',
+        analysis: lastAnalysis || {
+          estilo: '',
+          descripcion_estilo: '',
+          colores_detectados: extractedColors || [],
+          tintas_recomendadas: [],
+        },
+      }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data?.error || 'No he podido guardar el feedback');
+    }
+
+    input.value = '';
+    updateFeedbackCount();
+    showFeedbackReward(data.reward);
+    toggleFeedbackPanel(true);
+  } catch (error) {
+    alert(error.message || 'No he podido guardar el feedback');
+  } finally {
+    if (sendBtn) {
+      sendBtn.disabled = false;
+      sendBtn.textContent = 'Enviar feedback';
+    }
+  }
+}
+
+function copyRewardCode() {
+  const code = String(document.getElementById('feedback-reward-code')?.textContent || '').trim();
+  if (!code) return;
+  navigator.clipboard?.writeText(code).catch(() => {});
+}
+
+toggleFeedbackPanel(true);
+
 // â”€â”€ MENSAJES DE ATOMX â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const mensajes = {
   idle:      "Hola, ensename el diseno y te digo las tintas.",
@@ -1221,6 +1859,10 @@ let imageMediaType = 'image/jpeg';
 let loadingInterval = null;
 let selectedSkin = 1;
 let extractedColors = [];
+var feedbackOpen = false;
+var paletteOpen = false;
+var paletteSamples = [];
+var selectedPaletteHex = '';
 const ANALYSIS_MAX_DIM = 1800;
 const UPLOAD_MAX_BYTES = 3.5 * 1024 * 1024;
 
@@ -1364,6 +2006,8 @@ function getDominantColors(canvas, n) {
   const data = ctx.getImageData(0, 0, w, h).data;
   const buckets = {};
   const step = Math.max(1, Math.floor((w * h) / 14000));
+  const gridCols = 14;
+  const gridRows = 14;
   let total = 0;
 
   for (let i = 0; i < data.length; i += 4 * step) {
@@ -1380,7 +2024,15 @@ function getDominantColors(canvas, n) {
     const bs = satBucket;
     const bl = lightBucket;
     const key = `${bh},${bs},${bl}`;
-    if (!buckets[key]) buckets[key] = { count: 0, rSum: 0, gSum: 0, bSum: 0, xSum: 0, ySum: 0 };
+    if (!buckets[key]) buckets[key] = {
+      count: 0,
+      rSum: 0,
+      gSum: 0,
+      bSum: 0,
+      xSum: 0,
+      ySum: 0,
+      cells: {},
+    };
     buckets[key].count++;
     buckets[key].rSum += r;
     buckets[key].gSum += g;
@@ -1390,6 +2042,10 @@ function getDominantColors(canvas, n) {
     const y = Math.floor(pixelIndex / w);
     buckets[key].xSum += x;
     buckets[key].ySum += y;
+    const cellX = Math.max(0, Math.min(gridCols - 1, Math.floor((x / w) * gridCols)));
+    const cellY = Math.max(0, Math.min(gridRows - 1, Math.floor((y / h) * gridRows)));
+    const cellKey = `${cellX},${cellY}`;
+    buckets[key].cells[cellKey] = (buckets[key].cells[cellKey] || 0) + 1;
   }
 
   const candidates = Object.entries(buckets)
@@ -1398,6 +2054,12 @@ function getDominantColors(canvas, n) {
       const g = Math.round(val.gSum / val.count);
       const b = Math.round(val.bSum / val.count);
       const hsl = rgbToHsl(r, g, b);
+      const peakCellEntry = Object.entries(val.cells || {}).sort((a, b) => b[1] - a[1])[0];
+      const [peakCellX, peakCellY] = peakCellEntry
+        ? peakCellEntry[0].split(',').map(Number)
+        : [Math.floor(gridCols / 2), Math.floor(gridRows / 2)];
+      const peakX = ((peakCellX + 0.5) / gridCols) * w;
+      const peakY = ((peakCellY + 0.5) / gridRows) * h;
       return {
         key,
         count: val.count,
@@ -1407,8 +2069,8 @@ function getDominantColors(canvas, n) {
         categoria: hslToCategory(hsl[0], hsl[1], hsl[2]),
         importancia: getColorImportance(hsl[0], hsl[1], hsl[2], val.count),
         centroid: {
-          x: val.count ? val.xSum / val.count : w / 2,
-          y: val.count ? val.ySum / val.count : h / 2,
+          x: peakX,
+          y: peakY,
           width: w,
           height: h,
         },
@@ -1475,6 +2137,32 @@ function buildPreviewMarkerPayload(colors = [], recomendaciones = []) {
   });
 }
 
+function getPreviewImageGeometry() {
+  const overlay = document.getElementById('preview-overlay');
+  const preview = document.getElementById('preview-img');
+  if (!overlay || !preview) return null;
+
+  const overlayW = overlay.clientWidth || overlay.offsetWidth || 1;
+  const overlayH = overlay.clientHeight || overlay.offsetHeight || 1;
+  const srcW = preview.naturalWidth || preview.clientWidth || overlayW;
+  const srcH = preview.naturalHeight || preview.clientHeight || overlayH;
+  const scale = Math.max(overlayW / srcW, overlayH / srcH);
+  const renderedW = srcW * scale;
+  const renderedH = srcH * scale;
+
+  return {
+    overlayW,
+    overlayH,
+    srcW,
+    srcH,
+    scale,
+    renderedW,
+    renderedH,
+    offsetX: (overlayW - renderedW) / 2,
+    offsetY: (overlayH - renderedH) / 2,
+  };
+}
+
 function setActiveVisualTarget(targetName = '', tintaId = '') {
   const target = String(targetName || '').trim().toLowerCase();
 
@@ -1510,27 +2198,24 @@ function renderPreviewMarkers(colors = [], recomendaciones = []) {
     .filter((color) => color?.centroid && color.porcentaje >= 6)
     .slice(0, 6);
 
-  const overlayW = overlay.clientWidth || overlay.offsetWidth || 1;
-  const overlayH = overlay.clientHeight || overlay.offsetHeight || 1;
+  const geometry = getPreviewImageGeometry();
+  if (!geometry) return;
 
   markers.forEach((color) => {
-    const srcW = color.centroid?.width || overlayW;
-    const srcH = color.centroid?.height || overlayH;
-    const scale = Math.max(overlayW / srcW, overlayH / srcH);
-    const renderedW = srcW * scale;
-    const renderedH = srcH * scale;
-    const offsetX = (overlayW - renderedW) / 2;
-    const offsetY = (overlayH - renderedH) / 2;
-    const x = offsetX + (color.centroid.x * scale);
-    const y = offsetY + (color.centroid.y * scale);
-    const cx = (x / overlayW) * 100;
-    const cy = (y / overlayH) * 100;
+    const srcW = color.centroid?.width || geometry.srcW;
+    const srcH = color.centroid?.height || geometry.srcH;
+    const xRatio = srcW ? color.centroid.x / srcW : 0.5;
+    const yRatio = srcH ? color.centroid.y / srcH : 0.5;
+    const x = geometry.offsetX + (xRatio * geometry.renderedW);
+    const y = geometry.offsetY + (yRatio * geometry.renderedH);
+    const cx = (x / geometry.overlayW) * 100;
+    const cy = (y / geometry.overlayH) * 100;
     const marker = document.createElement('div');
     marker.className = 'preview-marker';
     marker.setAttribute('data-target-name', color.tintaColorBase || color.nombre || '');
     marker.setAttribute('data-target-id', color.tintaId || '');
-    marker.style.left = `${Math.max(8, Math.min(92, cx))}%`;
-    marker.style.top = `${Math.max(10, Math.min(88, cy))}%`;
+    marker.style.left = `${Math.max(6, Math.min(94, cx))}%`;
+    marker.style.top = `${Math.max(8, Math.min(90, cy))}%`;
     marker.innerHTML = `
       <div class="preview-line"></div>
       <div class="preview-dot" style="background:${color.hex}"></div>
@@ -2214,6 +2899,7 @@ function resetApp() {
   if (brandChangeTimer) clearTimeout(brandChangeTimer);
   lastAnalysis = null;
   imageBase64 = null;
+  clearPaletteSamples();
   document.getElementById('preview-img').style.display = 'none';
   document.getElementById('preview-img').src = '';
   document.getElementById('preview-overlay').innerHTML = '';
@@ -2228,6 +2914,8 @@ function resetApp() {
   setAtomxState('idle');
   window.scrollTo({ top:0, behavior:'smooth' });
 }
+
+bootAccess();
 </script>
 </body>
 </html>

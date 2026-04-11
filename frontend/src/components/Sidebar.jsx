@@ -5,7 +5,7 @@ import api from '../api/client';
 import { canAccessSection } from '../utils/permissions';
 import {
   LayoutDashboard, Package, CheckSquare,
-  Archive, DollarSign, LogOut, X, Circle, WalletCards, Route, TimerReset, CheckCircle2, Coffee, Store, StickyNote, Zap, BriefcaseBusiness, Users, Cloud, Search, Palette
+  Archive, DollarSign, LogOut, X, Circle, WalletCards, Route, TimerReset, CheckCircle2, Coffee, Store, StickyNote, Zap, BriefcaseBusiness, Users, Cloud, Search, Palette, Scissors
 } from 'lucide-react';
 
 const nav = [
@@ -13,6 +13,7 @@ const nav = [
   { to: '/direccion', icon: BriefcaseBusiness, label: 'Direccion', section: 'direccion' },
   { to: '/buscador', icon: Search, label: 'Buscador PRO', section: 'buscador' },
   { to: '/design-ia', icon: Palette, label: 'Design IA', section: 'designia' },
+  { to: '/stencil', icon: Scissors, label: 'Stencil Tool', section: 'stencil' },
   { to: '/clientes', icon: Users, label: 'Clientes', section: 'clientes' },
   { to: '/factusol', icon: Cloud, label: 'Factusol', section: 'factusol' },
   { to: '/pedidos', icon: Package, label: 'Pedidos', section: 'pedidos' },
