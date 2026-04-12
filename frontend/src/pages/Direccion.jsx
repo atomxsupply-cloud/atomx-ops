@@ -184,6 +184,18 @@ export default function Direccion() {
   const pulso = data?.resumen;
   const topCliente = useMemo(() => data?.top_clientes?.[0] || null, [data]);
   const factusolReady = Boolean(data?.factusol?.ready);
+  const feedbackByRecency = useMemo(
+    () => [...designFeedback].sort((a, b) => Number(b.id || 0) - Number(a.id || 0)),
+    [designFeedback],
+  );
+  const federicoFeedback = useMemo(
+    () => feedbackByRecency.filter((item) => String(item.autor || '').toLowerCase().includes('federico')).slice(0, 3),
+    [feedbackByRecency],
+  );
+  const generalFeedback = useMemo(
+    () => feedbackByRecency.filter((item) => !federicoFeedback.some((f) => f.id === item.id)).slice(0, 5),
+    [feedbackByRecency, federicoFeedback],
+  );
 
   if (loading) return <div className="text-sm text-slate-500">Cargando panel de direccion...</div>;
 
@@ -230,19 +242,50 @@ export default function Direccion() {
           <p className="text-sm text-slate-400">Todavia no ha entrado ninguna opinion desde Design.</p>
         ) : (
           <div className="space-y-3">
-            {designFeedback.slice(0, 5).map((item) => (
+            {federicoFeedback.length ? (
+              <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4">
+                <div className="mb-3 flex items-center gap-2">
+                  <ShieldCheck size={15} className="text-orange-600" />
+                  <p className="text-sm font-semibold text-slate-800">Ultimas 3 opiniones completas de Federico</p>
+                </div>
+                <div className="space-y-3">
+                  {federicoFeedback.map((item) => (
+                    <div key={`federico-${item.id}`} className="rounded-2xl border border-orange-100 bg-white p-4">
+                      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-800">{item.autor || 'Federico'}</p>
+                          <p className="text-xs text-slate-500">
+                            {item.selected_brand || 'Marca libre'}{item.estilo_detectado ? ` / ${item.estilo_detectado}` : ''}{item.skin_tone ? ` / ${item.skin_tone}` : ''}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                          {item.reward_code ? (
+                            <span className={`rounded-full px-3 py-1 font-semibold ${item.reward_status === 'used' ? 'bg-slate-200 text-slate-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                              {item.reward_amount} EUR / {item.reward_code} / {item.reward_status === 'used' ? 'usado' : 'valido'}
+                            </span>
+                          ) : null}
+                          <span className="text-slate-400">{item.created_at}</span>
+                        </div>
+                      </div>
+                      <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">{item.feedback}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {generalFeedback.map((item) => (
               <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-800">{item.autor || 'Tatuador'}</p>
                     <p className="text-xs text-slate-500">
-                      {item.selected_brand || 'Marca libre'}{item.estilo_detectado ? ` · ${item.estilo_detectado}` : ''}{item.skin_tone ? ` · ${item.skin_tone}` : ''}
+                      {item.selected_brand || 'Marca libre'}{item.estilo_detectado ? ` / ${item.estilo_detectado}` : ''}{item.skin_tone ? ` / ${item.skin_tone}` : ''}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-xs">
                     {item.reward_code ? (
                       <span className={`rounded-full px-3 py-1 font-semibold ${item.reward_status === 'used' ? 'bg-slate-200 text-slate-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                        {item.reward_amount} EUR · {item.reward_code} · {item.reward_status === 'used' ? 'usado' : 'valido'}
+                        {item.reward_amount} EUR / {item.reward_code} / {item.reward_status === 'used' ? 'usado' : 'valido'}
                       </span>
                     ) : (
                       <span className="rounded-full bg-slate-200 px-3 py-1 font-semibold text-slate-600">Sin premio</span>
@@ -250,7 +293,7 @@ export default function Direccion() {
                     <span className="text-slate-400">{item.created_at}</span>
                   </div>
                 </div>
-                <p className="mt-3 text-sm leading-6 text-slate-700">{String(item.feedback || '').slice(0, 320)}</p>
+                <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">{item.feedback}</p>
               </div>
             ))}
           </div>
@@ -442,9 +485,9 @@ export default function Direccion() {
                 </p>
                 {feedbackLookup.item ? (
                   <>
-                    <p className="mt-2 text-sm text-slate-700">{feedbackLookup.item.autor || 'tatuador'} · {feedbackLookup.item.selected_brand || 'sin marca'}</p>
-                    <p className="mt-1 text-xs text-slate-500">{String(feedbackLookup.item.feedback || '').slice(0, 220)}</p>
-                    <p className="mt-2 text-xs text-slate-500">Estado: {feedbackLookup.item.reward_status} · {Number(feedbackLookup.item.reward_amount || 0).toFixed(2)} EUR</p>
+                    <p className="mt-2 text-sm text-slate-700">{feedbackLookup.item.autor || 'tatuador'} / {feedbackLookup.item.selected_brand || 'sin marca'}</p>
+                    <p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-slate-500">{feedbackLookup.item.feedback}</p>
+                    <p className="mt-2 text-xs text-slate-500">Estado: {feedbackLookup.item.reward_status} / {Number(feedbackLookup.item.reward_amount || 0).toFixed(2)} EUR</p>
                     {feedbackLookup.item.reward_code ? (
                       <button
                         type="button"
@@ -479,12 +522,12 @@ export default function Direccion() {
             <p className="text-sm text-slate-400">Aun no hay feedback guardado.</p>
           ) : (
             <div className="space-y-3">
-              {designFeedback.map((item) => (
+              {feedbackByRecency.map((item) => (
                 <div key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <p className="text-sm font-semibold text-slate-800">{item.autor || 'tatuador'}</p>
-                      <p className="text-xs text-slate-500">{item.selected_brand || 'sin marca'} · {item.skin_tone || 'sin piel'} · {item.estilo_detectado || 'sin estilo'}</p>
+                      <p className="text-xs text-slate-500">{item.selected_brand || 'sin marca'} / {item.skin_tone || 'sin piel'} / {item.estilo_detectado || 'sin estilo'}</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       {item.reward_code ? (
@@ -495,7 +538,7 @@ export default function Direccion() {
                       </span>
                     </div>
                   </div>
-                  <p className="mt-3 text-sm leading-6 text-slate-700">{item.feedback}</p>
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">{item.feedback}</p>
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                     <p className="text-xs text-slate-400">{String(item.created_at || '').replace('T', ' ')}</p>
                     {item.reward_code ? (
