@@ -1,7 +1,9 @@
 const express = require('express');
+const { stat } = require('node:fs/promises');
 const { db } = require('../db');
 const { getEternalCatalog, searchEternalCatalog } = require('../services/eternalCatalog');
 const { getTintasCatalog, searchTintasCatalog } = require('../services/tintasCatalog');
+const { FEED_FILE, MAX_FEED_AGE_MS } = require('../services/openaiProductFeed');
 
 const router = express.Router();
 
@@ -21,6 +23,30 @@ function generateRewardCode() {
   }
   return `${Date.now()}`.slice(-5);
 }
+
+router.get('/openai/products.csv', async (_req, res, next) => {
+  res.set('Cache-Control', 'no-cache');
+  if (process.env.CHATGPT_FEED_ENABLED !== '1') return res.sendStatus(404);
+  const unavailable = () => {
+    res.set('Retry-After', '3600');
+    return res.sendStatus(503);
+  };
+
+  let snapshot;
+  try {
+    snapshot = await stat(FEED_FILE);
+  } catch (error) {
+    if (error.code === 'ENOENT') return unavailable();
+    return next(error);
+  }
+  if (!snapshot.isFile() || !snapshot.size || Date.now() - snapshot.mtimeMs > MAX_FEED_AGE_MS) {
+    return unavailable();
+  }
+  return res.type('text/csv').sendFile(FEED_FILE, { cacheControl: false }, (error) => {
+    if (error && !res.headersSent && error.code === 'ENOENT') return unavailable();
+    if (error) return next(error);
+  });
+});
 
 router.get('/eternal/catalogo', async (_req, res) => {
   try {
