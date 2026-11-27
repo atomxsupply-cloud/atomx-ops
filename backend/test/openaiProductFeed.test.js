@@ -46,6 +46,9 @@ function mockStore(mock, { price = '90.000000', duplicate = false } = {}) {
       return new Response(content);
     }
     assert.equal(options.method, 'GET');
+    const display = url.searchParams.get('display').slice(1, -1).split(',');
+    assert.ok(display.includes('chatgpt_regular'));
+    assert.ok(display.includes('chatgpt_current'));
     assert.equal(options.redirect, 'error');
     assert.equal(url.searchParams.get('price[chatgpt_regular][use_reduction]'), '0');
     assert.equal(url.searchParams.get('price[chatgpt_current][use_tax]'), '1');
