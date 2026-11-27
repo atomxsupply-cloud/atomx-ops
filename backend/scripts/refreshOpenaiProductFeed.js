@@ -33,7 +33,8 @@ function readConfig() {
 async function getPrices(resource, ids, config) {
   const isProduct = resource === 'products';
   const params = {
-    display: isProduct ? '[id,active,visibility,show_price,condition]' : '[id,id_product]',
+    display: isProduct ? '[id,active,visibility,show_price,condition,chatgpt_regular,chatgpt_current]'
+      : '[id,id_product,chatgpt_regular,chatgpt_current]',
   };
   for (const [name, useReduction] of [['chatgpt_regular', 0], ['chatgpt_current', 1]]) {
     const scope = { use_tax: 1, use_reduction: useReduction, decimals: 6, ...config.pricingContext };
@@ -52,7 +53,7 @@ async function getPrices(resource, ids, config) {
       });
     } catch (error) {
       const status = Number.isInteger(error.status) ? ` HTTP ${error.status}` : '';
-      throw new Error(`PrestaShop no devolvió ${resource}.${status}`);
+      throw new Error(`PrestaShop no devolvió ${resource}${status}`);
     }
     const results = response?.[resource];
     if (!Array.isArray(results) || results.length !== batch.length) {
