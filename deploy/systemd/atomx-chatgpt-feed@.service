@@ -1,0 +1,13 @@
+[Unit]
+Description=Generar el catálogo de Atom X Supply para ChatGPT
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=%i
+WorkingDirectory=/var/www/atomx-ops/backend
+ExecStart=/usr/bin/node scripts/refreshOpenaiProductFeed.js
+TimeoutStartSec=1h
+UMask=0027
+NoNewPrivileges=true
